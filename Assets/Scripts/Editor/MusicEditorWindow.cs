@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Security.Policy;
 using UnityEditor;
 using UnityEngine;
 
@@ -28,6 +29,7 @@ namespace Pingle.EditorTools
         private int _replaySample;
         private int _startSample;
         private GUIStyle _fileButtonStyle;
+        private bool _previewMouseDown;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -42,6 +44,7 @@ namespace Pingle.EditorTools
             AudioControl();
             AudioInfo();
             AudioPreview();
+            PreviewScrollBarZoom();
         }
 
         private void InitializeResources()
@@ -233,6 +236,41 @@ namespace Pingle.EditorTools
             PreviewProcessMouseClickEvent();
         }
 
+        private void PreviewScrollBarZoom()
+        {
+            var sampleCount = _currentClip == null ? 1 : _currentClip.samples;
+            var zoom = _preview.y - _preview.x;
+            if (Event.current.type == EventType.ScrollWheel)
+            {
+                if (Event.current.delta.y < 0)
+                {
+                    zoom /= 2;
+                }
+                else
+                {
+                    zoom *= 2;
+                    if (zoom > sampleCount)
+                    {
+                        _preview.x = 0;
+                        _preview.y = sampleCount;
+                        zoom = sampleCount;
+                    }
+                }
+                _preview.y = _preview.x + zoom;
+                _previewOutdated = true;
+                Repaint();
+            }
+
+            var previewX = GUILayout.HorizontalScrollbar(_preview.x, zoom, 0, sampleCount);
+            if ((int)previewX != _preview.x)
+            {
+                _preview.x = (int)previewX;
+                _preview.y = _preview.x + zoom;
+                _previewOutdated = true;
+                Repaint();
+            }
+        }
+
         private Rect SampleToPreviewSliderRect(int sample)
         {
             var sliderStart = SampleToPreviewX(sample);
@@ -242,16 +280,22 @@ namespace Pingle.EditorTools
         private void PreviewProcessMouseClickEvent()
         {
             var mousePos = Event.current.mousePosition;
+            if (!_previewRect.Contains(mousePos))
+            {
+                _previewMouseDown = false;
+                return;
+            }
 
-            if (_previewRect.Contains(mousePos) && Event.current.type == EventType.MouseDown)
+            if (Event.current.type == EventType.MouseDown)
             {
                 _selection.x = MouseToSamplePos(mousePos);
                 _selection.y = _selection.x;
                 _previewMouseStartPos = mousePos;
+                _previewMouseDown = true;
                 Repaint();
             }
 
-            if (Event.current.type == EventType.MouseDrag && (Mathf.Abs(mousePos.x - _previewMouseStartPos.x) > 5))
+            if (_previewMouseDown && Event.current.type == EventType.MouseDrag && (Mathf.Abs(mousePos.x - _previewMouseStartPos.x) > 5))
             {
                 _selection.y = MouseToSamplePos(mousePos);
                 Repaint();

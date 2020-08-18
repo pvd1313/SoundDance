@@ -8,7 +8,7 @@ namespace Pingle.EditorTools
     {
         private static readonly Color BackgroundColor = Color.clear;
         private static readonly Color WaveColor = Color.blue;
-        private static readonly int MaxSamplesPerPixel = 64;
+        private static readonly int MaxSamplesPerPixel = 1024;
 
         public static void DrawPreview(Texture2D texture, AudioClip clip, int startSample, int endSample, int channelIndex)
         {
@@ -24,11 +24,11 @@ namespace Pingle.EditorTools
             var channelCount = clip.channels;
             var buffer = new float[samplesPerPixel * channelCount];
             var textureHeight = texture.height;
-            var offset = (int)samplesPerPixel / MaxSamplesPerPixel;
+            var offset = Mathf.Max(1, samplesPerPixel / MaxSamplesPerPixel);
 
             for (var x = 0; x < texture.width; x++)
             {
-                clip.GetData(buffer, x * samplesPerPixel);
+                clip.GetData(buffer, x * samplesPerPixel + startSample);
                 var minY = int.MaxValue;
                 var maxY = int.MinValue;
                 for (var j = 0; j < buffer.Length / channelCount; j += offset)
