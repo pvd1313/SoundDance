@@ -44,6 +44,7 @@ namespace Pingle.EditorTools
         private List<int> _markers = new List<int>();
         private string _musicDatabasePath;
         private string _cursorText;
+        private int _analyzeBPM;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -65,6 +66,30 @@ namespace Pingle.EditorTools
             PreviewScrollBarZoom();
             Markers();
             MusicDatabaseControl();
+            BeatControl();
+        }
+
+        private void BeatControl()
+        {
+            GUILayout.BeginHorizontal();
+
+            GUILayout.Label("BPM", GUILayout.Width(30));
+
+            EditorGUI.BeginDisabledGroup(true);
+            GUILayout.TextField(_analyzeBPM.ToString(), GUILayout.Width(30));
+            EditorGUI.EndDisabledGroup();
+
+            if (GUILayout.Button("Analyze clip", GUILayout.Width(100)) && _currentClip != null)
+            {
+                var detector = new BeatDetector(_currentClip);
+                var beats = detector.DetectBeats();
+                _markers.Clear();
+                _markers.AddRange(beats);
+                TryExportCurrentClipMarkers();
+                _analyzeBPM = (int)((beats.Count / _currentClip.length) * 60);
+            }
+
+            GUILayout.EndHorizontal();
         }
 
         private void AutosaveDatabase()
