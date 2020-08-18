@@ -201,7 +201,7 @@ namespace Pingle.EditorTools
             if (Event.current.type == EventType.Repaint)
                 _previewRect = textureRect;
 
-            GUILayoutUtility.GetRect(100, 30);
+            GUILayoutUtility.GetRect(100, 20);
 
             if (_previewTexture == null || _previewTexture.width != _previewRect.width || _previewTexture.height != _previewRect.height || _previewOutdated)
             {
