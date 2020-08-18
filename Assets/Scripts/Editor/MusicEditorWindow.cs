@@ -210,12 +210,12 @@ namespace Pingle.EditorTools
         {
             GUILayout.BeginHorizontal();
 
-            var frequency = _currentClip == null ? "" : (_currentClip.frequency / 1000f).ToString() + " kHz";
+            var frequencyKHZ = _currentClip == null ? "" : (_currentClip.frequency / 1000f).ToString() + " kHz";
             var duration = _currentClip == null ? "" : new TimeSpan(0, 0, (int)(_currentClip.length)).ToString(@"mm\:ss");
             var channels = _currentClip == null ? "" : _currentClip.channels.ToString();
 
             GUILayout.Label("Frequency", GUILayout.Width(65));
-            EditorGUI.BeginDisabledGroup(true);  GUILayout.TextField(frequency, GUILayout.Width(60)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true);  GUILayout.TextField(frequencyKHZ, GUILayout.Width(60)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Length", GUILayout.Width(41));
             EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(duration, GUILayout.Width(40)); EditorGUI.EndDisabledGroup();
@@ -223,7 +223,17 @@ namespace Pingle.EditorTools
             GUILayout.Label("Channels", GUILayout.Width(55));
             EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(channels, GUILayout.Width(15)); EditorGUI.EndDisabledGroup();
 
+            GUILayout.Label("Cursor", GUILayout.Width(41));
+            var cursor = SampleToPreciseTime(Mathf.Min(_selection.x, _selection.y));
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(cursor, GUILayout.Width(57)); EditorGUI.EndDisabledGroup();
+
             GUILayout.EndHorizontal();
+        }
+
+        private string SampleToPreciseTime(int sample)
+        {
+            if (_currentClip == null) return "";
+            return TimeSpan.FromSeconds(sample / (float)_currentClip.frequency).ToString(@"mm\:ss\.ff");
         }
 
         private void AudioPreviewTimeline()
