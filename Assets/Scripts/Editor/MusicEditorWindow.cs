@@ -10,6 +10,9 @@ namespace Pingle.EditorTools
     public class MusicEditorWindow : EditorWindow
     {
         private static readonly string[] AudioFormats = new string[] { ".wav", ".mp3", ".aif", ".ogg" };
+        private static readonly float[] TimelineSizes = new float[] { 1f, 5f, 10f, 30f, 60f };
+        private static readonly float TimelineSectionWidth = 50;
+        private static readonly float ZoomSpeed = 1.5f;
 
         private string _folderPath;
         private string[] _folderItems = new string[0];
@@ -18,12 +21,14 @@ namespace Pingle.EditorTools
         private Texture2D _previewTexture;
         private bool _previewOutdated;
         private Rect _previewRect;
+        private Rect _timelineRect;
         private Vector2Int _preview;
         private Vector2Int _selection;
         private Texture2D _selectionSliderTexture;
         private Texture2D _selectionBackgroundTexture;
         private Texture2D _playingTexture;
         private Texture2D _markerTexture;
+        private Texture2D _timelineTexture;
         private AudioSource _audioSource;
         private Vector2 _previewMouseStartPos;
         private bool _loopAudio;
@@ -54,6 +59,7 @@ namespace Pingle.EditorTools
             FolderGUI();
             AudioControl();
             AudioInfo();
+            AudioPreviewTimeline();
             AudioPreview();
             PreviewScrollBarZoom();
             Markers();
@@ -120,6 +126,13 @@ namespace Pingle.EditorTools
             {
                 _musicDatabase = new MusicDatabase();
                 _musicDatabase.Data = new List<MusicData>();
+            }
+
+            if (_timelineTexture == null)
+            {
+                _timelineTexture = new Texture2D(1, 1);
+                _timelineTexture.SetPixel(0, 0, Color.gray);
+                _timelineTexture.Apply();
             }
         }
 
@@ -213,6 +226,37 @@ namespace Pingle.EditorTools
             GUILayout.EndHorizontal();
         }
 
+        private void AudioPreviewTimeline()
+        {
+            var timelineRect = GUILayoutUtility.GetRect(100, 20);
+            if (Event.current.type == EventType.Repaint)
+                _timelineRect = timelineRect;
+
+            var frequency = _currentClip == null ? 1 : _currentClip.frequency;
+            var sectionCount = _timelineRect.width / TimelineSectionWidth;
+            var zoom = _preview.y - _preview.x;
+            var windowSize = zoom / (float)frequency;
+            var sectionSize = windowSize / sectionCount;
+            var resultSize = TimelineSizes.OrderByDescending(k => k).LastOrDefault(k => k > sectionSize);
+
+            var firstSection = (int)(_preview.x / frequency / resultSize);
+            var totalSections = (int)((float)zoom / frequency / resultSize) + 2;
+            for (var i = 0; i < totalSections; i++)
+            {
+                var sample = (int)((firstSection + i) * resultSize * frequency);
+                var x = SampleToPreviewXLocal(sample);
+                
+                var lineRect = new Rect(_timelineRect.x + x, _timelineRect.y, 1, _timelineRect.height);
+                GUI.DrawTexture(lineRect, _timelineTexture);
+
+                var textRect = new Rect(_timelineRect.x + x, _timelineRect.y + 3, TimelineSectionWidth, _timelineRect.height);
+                var timeText = TimeSpan.FromSeconds((firstSection + i) * resultSize).ToString(@"mm\:ss");
+                GUI.Label(textRect, timeText);
+            }
+
+            GUI.DrawTexture(new Rect(_timelineRect.x, _timelineRect.y, _timelineRect.width, 1), _timelineTexture);
+        }
+
         private void AudioPreview()
         {
             var textureRect = GUILayoutUtility.GetRect(100, 200);
@@ -286,11 +330,11 @@ namespace Pingle.EditorTools
 
                 if (Event.current.delta.y < 0)
                 {
-                    zoom = Mathf.Max(1, zoom / 2);
+                    zoom = Mathf.Max(1, (int)(zoom / ZoomSpeed));
                 }
                 else
                 {
-                    zoom = Mathf.Min(sampleCount, zoom * 2);
+                    zoom = Mathf.Min(sampleCount, (int)(zoom * ZoomSpeed));
                 }
 
                 _preview.x = Mathf.Max(0, hoveredSample - (int)(zoom * hoveredPart));
