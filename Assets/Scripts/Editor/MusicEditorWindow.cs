@@ -43,6 +43,7 @@ namespace Pingle.EditorTools
         private MusicDatabase _musicDatabase;
         private List<int> _markers = new List<int>();
         private string _musicDatabasePath;
+        private string _cursorText;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -224,8 +225,7 @@ namespace Pingle.EditorTools
             EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(channels, GUILayout.Width(15)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Cursor", GUILayout.Width(41));
-            var cursor = SampleToPreciseTime(Mathf.Min(_selection.x, _selection.y));
-            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(cursor, GUILayout.Width(57)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_cursorText, GUILayout.Width(57)); EditorGUI.EndDisabledGroup();
 
             GUILayout.EndHorizontal();
         }
@@ -396,11 +396,13 @@ namespace Pingle.EditorTools
                 if (hoveredMarkerIndex > 0)
                 {
                     _draggingMouseSample = _markers[hoveredMarkerIndex];
+                    _cursorText = SampleToPreciseTime(_draggingMouseSample);
                 }
                 else
                 {
                     _draggingMouseSample = MouseToSamplePos(mousePos);
                     _markers.Add(_draggingMouseSample);
+                    _cursorText = SampleToPreciseTime(_draggingMouseSample);
                     Repaint();
                     TryExportCurrentClipMarkers();
                 }
@@ -411,6 +413,7 @@ namespace Pingle.EditorTools
             {
                 _markers.Remove(_draggingMouseSample);
                 _draggingMouseSample = MouseToSamplePos(mousePos);
+                _cursorText = SampleToPreciseTime(_draggingMouseSample);
                 _markers.Add(_draggingMouseSample);
                 Repaint();
                 TryExportCurrentClipMarkers();
@@ -453,6 +456,7 @@ namespace Pingle.EditorTools
             {
                 _selection.x = MouseToSamplePos(mousePos);
                 _selection.y = _selection.x;
+                _cursorText = SampleToPreciseTime(_selection.x);
                 _previewMouseStartPos = mousePos;
                 _previewMouseDown = true;
                 Repaint();
@@ -461,6 +465,7 @@ namespace Pingle.EditorTools
             if (_previewMouseDown && Event.current.type == EventType.MouseDrag && (Mathf.Abs(mousePos.x - _previewMouseStartPos.x) > 5))
             {
                 _selection.y = MouseToSamplePos(mousePos);
+                _cursorText = SampleToPreciseTime(_selection.y);
                 Repaint();
             }
         }
