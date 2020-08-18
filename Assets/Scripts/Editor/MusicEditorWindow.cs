@@ -32,6 +32,7 @@ namespace Pingle.EditorTools
         private GUIStyle _fileButtonStyle;
         private GUIStyle _markerButtonStyle;
         private bool _previewMouseDown;
+        private int _draggingMouseSample;
         private List<int> _markers = new List<int>();
 
         [MenuItem("Tools/MusicEditor")]
@@ -309,22 +310,35 @@ namespace Pingle.EditorTools
             }
 
             var mousePos = Event.current.mousePosition;
-            if (!_previewRect.Contains(mousePos) || Event.current.button != 1) return;
-
-            var markerIndex = FindMarkerAtMousePosition(mousePos);
-
-            if (Event.current.type == EventType.MouseDown && markerIndex < 0)
+            if (!_previewRect.Contains(mousePos) || Event.current.button != 1)
             {
-                var sample = MouseToSamplePos(mousePos);
-                _markers.Add(sample);
-                Repaint();
-                TryExportMarkers();
+                _draggingMouseSample = -1;
+                return;
             }
 
-            if (Event.current.type == EventType.MouseDrag && markerIndex >= 0)
+            var hoveredMarkerIndex = FindMarkerAtMousePosition(mousePos);
+
+            if (Event.current.type == EventType.MouseDown)
             {
-                _markers.RemoveAt(markerIndex);
-                _markers.Add(MouseToSamplePos(mousePos));
+                if (hoveredMarkerIndex > 0)
+                {
+                    _draggingMouseSample = _markers[hoveredMarkerIndex];
+                }
+                else
+                {
+                    _draggingMouseSample = MouseToSamplePos(mousePos);
+                    _markers.Add(_draggingMouseSample);
+                    Repaint();
+                    TryExportMarkers();
+                }
+                
+            }
+
+            if (Event.current.type == EventType.MouseDrag && _draggingMouseSample > 0)
+            {
+                _markers.Remove(_draggingMouseSample);
+                _draggingMouseSample = MouseToSamplePos(mousePos);
+                _markers.Add(_draggingMouseSample);
                 Repaint();
                 TryExportMarkers();
             }
