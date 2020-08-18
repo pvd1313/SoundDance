@@ -32,8 +32,12 @@ namespace Pingle.EditorTools
         private GUIStyle _fileButtonStyle;
         private GUIStyle _markerButtonStyle;
         private bool _previewMouseDown;
+        private bool _databaseDirty;
+        private float _lastSaveTime;
         private int _draggingMouseSample;
+        private MusicDatabase _musicDatabase;
         private List<int> _markers = new List<int>();
+        private string _musicDatabasePath;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -43,6 +47,9 @@ namespace Pingle.EditorTools
 
         private void OnGUI()
         {
+            EditorApplication.update -= AutosaveDatabase;
+            EditorApplication.update += AutosaveDatabase;
+
             InitializeResources();
             FolderGUI();
             AudioControl();
@@ -50,6 +57,15 @@ namespace Pingle.EditorTools
             AudioPreview();
             PreviewScrollBarZoom();
             Markers();
+            MusicDatabaseControl();
+        }
+
+        private void AutosaveDatabase()
+        {
+            if (_databaseDirty && (int)_lastSaveTime < (int)EditorApplication.timeSinceStartup)
+            {
+                TryExportDatabase(_musicDatabasePath);
+            }
         }
 
         private void InitializeResources()
@@ -98,6 +114,12 @@ namespace Pingle.EditorTools
             if (_markerButtonStyle == null)
             {
                 _markerButtonStyle = new GUIStyle();
+            }
+
+            if (_musicDatabase == null)
+            {
+                _musicDatabase = new MusicDatabase();
+                _musicDatabase.Data = new List<MusicData>();
             }
         }
 
@@ -179,18 +201,14 @@ namespace Pingle.EditorTools
             var duration = _currentClip == null ? "" : new TimeSpan(0, 0, (int)(_currentClip.length)).ToString(@"mm\:ss");
             var channels = _currentClip == null ? "" : _currentClip.channels.ToString();
 
-            EditorGUI.BeginDisabledGroup(true);
-
             GUILayout.Label("Frequency", GUILayout.Width(65));
-            GUILayout.TextField(frequency, GUILayout.Width(60));
+            EditorGUI.BeginDisabledGroup(true);  GUILayout.TextField(frequency, GUILayout.Width(60)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Length", GUILayout.Width(41));
-            GUILayout.TextField(duration, GUILayout.Width(40));
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(duration, GUILayout.Width(40)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Channels", GUILayout.Width(55));
-            GUILayout.TextField(channels, GUILayout.Width(15));
-
-            EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(channels, GUILayout.Width(15)); EditorGUI.EndDisabledGroup();
 
             GUILayout.EndHorizontal();
         }
@@ -306,7 +324,7 @@ namespace Pingle.EditorTools
                 if (GUI.Button(rect, "", _markerButtonStyle))
                 {
                     _markers.RemoveAt(i);
-                    TryExportMarkers();
+                    TryExportCurrentClipMarkers();
                 }
             }
 
@@ -330,7 +348,7 @@ namespace Pingle.EditorTools
                     _draggingMouseSample = MouseToSamplePos(mousePos);
                     _markers.Add(_draggingMouseSample);
                     Repaint();
-                    TryExportMarkers();
+                    TryExportCurrentClipMarkers();
                 }
                 
             }
@@ -341,7 +359,7 @@ namespace Pingle.EditorTools
                 _draggingMouseSample = MouseToSamplePos(mousePos);
                 _markers.Add(_draggingMouseSample);
                 Repaint();
-                TryExportMarkers();
+                TryExportCurrentClipMarkers();
             }
         }
 
@@ -425,10 +443,10 @@ namespace Pingle.EditorTools
             _preview.y = _currentClip != null ? _currentClip.samples : 0;
             _selection.x = 0;
             _selection.y = 0;
-            TryImportMarkers();
+            TryImportCurrentClipMarkers();
         }
 
-        private void TryImportMarkers()
+        private void TryImportCurrentClipMarkers()
         {
             try
             {
@@ -436,12 +454,9 @@ namespace Pingle.EditorTools
 
                 if (_currentClip == null) return;
 
-                var audioPath = GetAssetFullPath(_currentClip);
-                var jsonPath = GetMarkersJsonPath(audioPath);
-                if (!File.Exists(jsonPath)) return;
+                var data = _musicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
+                if (data == null) return;
 
-                var json = File.ReadAllText(jsonPath);
-                var data = JsonUtility.FromJson<MusicData>(json);
                 _markers.AddRange(data.Markers.Where(m => m > 0 && m <= _currentClip.samples));
             }
             catch (Exception e)
@@ -450,21 +465,27 @@ namespace Pingle.EditorTools
             }
         }
 
-        private void TryExportMarkers()
+        private void TryExportCurrentClipMarkers()
         {
             if (_currentClip == null) return;
 
             try
             {
-                var data = new MusicData()
+                var data = _musicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
+                if (data == null)
                 {
-                    Markers = _markers
-                };
+                    data = new MusicData();
+                    data.Markers = new List<int>(_markers);
+                    data.MusicName = _currentClip.name;
+                    _musicDatabase.Data.Add(data);
+                }
+                else
+                {
+                    data.Markers.Clear();
+                    data.Markers.AddRange(_markers);
+                }
 
-                var audioPath = GetAssetFullPath(_currentClip);
-                var jsonPath = GetMarkersJsonPath(audioPath);
-                var json = JsonUtility.ToJson(data);
-                File.WriteAllText(jsonPath, json);
+                _databaseDirty = true;
             }
             catch (Exception e)
             {
@@ -472,18 +493,66 @@ namespace Pingle.EditorTools
             }
         }
 
-        private string GetMarkersJsonPath(string clipPath)
+        private void MusicDatabaseControl()
         {
-            var fileName = Path.GetFileName(clipPath);
-            var folderPath = Path.GetDirectoryName(clipPath);
-            return Path.Combine(folderPath, fileName + ".json");
+            GUILayout.BeginHorizontal();
+            
+            GUILayout.Label("Database", GUILayout.Width(60));
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_musicDatabasePath); EditorGUI.EndDisabledGroup();
+
+            if (GUILayout.Button("Open...", GUILayout.Width(60)))
+            {
+                var filePath = EditorUtility.OpenFilePanel("Open database", "/", "json");
+                TryImportDatabase(filePath);
+            }
+
+            if (GUILayout.Button("Save...", GUILayout.Width(60)))
+            {
+                var filePath = EditorUtility.SaveFilePanel("Save database", "/", "MusicDatabase", "json");
+                TryExportDatabase(filePath);
+            }
+
+            GUILayout.EndHorizontal();
         }
 
-        private string GetAssetFullPath<T>(T obj) where T : UnityEngine.Object
+        private void TryImportDatabase(string path)
         {
-            var assetPath = AssetDatabase.GetAssetPath(obj);
-            var dataPath = Application.dataPath.Replace("Assets", "");
-            return Path.Combine(dataPath, assetPath);
+            if (!File.Exists(path)) return;
+
+            try
+            {
+                var json = File.ReadAllText(path);
+                var database = JsonUtility.FromJson<MusicDatabase>(json);
+                if (database.Data == null) return;
+                _musicDatabase.Data.Clear();
+                _musicDatabase.Data.AddRange(database.Data.Where(d => d.Markers != null && !string.IsNullOrEmpty(d.MusicName)));
+                _musicDatabasePath = path;
+                TryImportCurrentClipMarkers();
+                Repaint();
+                _databaseDirty = false;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        private void TryExportDatabase(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                var json = JsonUtility.ToJson(_musicDatabase);
+                File.WriteAllText(path, json);
+                _musicDatabasePath = path;
+                _databaseDirty = false;
+                _lastSaveTime = (float)EditorApplication.timeSinceStartup;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
     }
 }
