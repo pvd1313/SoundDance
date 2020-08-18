@@ -257,25 +257,26 @@ namespace Pingle.EditorTools
 
         private void PreviewScrollBarZoom()
         {
-            var sampleCount = _currentClip == null ? 1 : _currentClip.samples;
             var zoom = _preview.y - _preview.x;
-            if (Event.current.type == EventType.ScrollWheel)
+            var sampleCount = _currentClip == null ? 1 : _currentClip.samples;
+            var mousePos = Event.current.mousePosition;
+
+            if (_previewRect.Contains(mousePos) && Event.current.type == EventType.ScrollWheel)
             {
+                var hoveredSample = MouseToSamplePos(mousePos);
+                var hoveredPart = SampleToPreviewXLocal(hoveredSample) / _previewRect.width;
+
                 if (Event.current.delta.y < 0)
                 {
-                    zoom /= 2;
+                    zoom = Mathf.Max(1, zoom / 2);
                 }
                 else
                 {
-                    zoom *= 2;
-                    if (zoom > sampleCount)
-                    {
-                        _preview.x = 0;
-                        _preview.y = sampleCount;
-                        zoom = sampleCount;
-                    }
+                    zoom = Mathf.Min(sampleCount, zoom * 2);
                 }
-                _preview.y = _preview.x + zoom;
+
+                _preview.x = Mathf.Max(0, hoveredSample - (int)(zoom * hoveredPart));
+                _preview.y = Math.Min(sampleCount, _preview.x + zoom);
                 _previewOutdated = true;
                 Repaint();
             }
