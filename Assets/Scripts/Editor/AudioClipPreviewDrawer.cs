@@ -7,7 +7,7 @@ namespace Pingle.EditorTools
     public static class AudioClipPreviewDrawer
     {
         private static readonly Color BackgroundColor = Color.clear;
-        private static readonly Color WaveColor = Color.blue;
+        private static readonly Color WaveColor = new Color(0, 0, 0.6f, 1);
         private static readonly int MaxSamplesPerPixel = 1024;
 
         public static void DrawPreview(Texture2D texture, AudioClip clip, int startSample, int endSample, int channelIndex)

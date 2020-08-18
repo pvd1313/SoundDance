@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Policy;
 using UnityEditor;
 using UnityEngine;
 
@@ -23,13 +23,16 @@ namespace Pingle.EditorTools
         private Texture2D _selectionSliderTexture;
         private Texture2D _selectionBackgroundTexture;
         private Texture2D _playingTexture;
+        private Texture2D _markerTexture;
         private AudioSource _audioSource;
         private Vector2 _previewMouseStartPos;
         private bool _loopAudio;
         private int _replaySample;
         private int _startSample;
         private GUIStyle _fileButtonStyle;
+        private GUIStyle _markerButtonStyle;
         private bool _previewMouseDown;
+        private List<int> _markers = new List<int>();
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -45,6 +48,7 @@ namespace Pingle.EditorTools
             AudioInfo();
             AudioPreview();
             PreviewScrollBarZoom();
+            Markers();
         }
 
         private void InitializeResources()
@@ -66,8 +70,15 @@ namespace Pingle.EditorTools
             if (_selectionBackgroundTexture == null)
             {
                 _selectionBackgroundTexture = new Texture2D(1, 1);
-                _selectionBackgroundTexture.SetPixel(0, 0, Color.white);
+                _selectionBackgroundTexture.SetPixel(0, 0, new Color(0.7f, 0.3f, 0.3f, 0.5f));
                 _selectionBackgroundTexture.Apply();
+            }
+
+            if (_markerTexture == null)
+            {
+                _markerTexture = new Texture2D(1, 1);
+                _markerTexture.SetPixel(0, 0, Color.yellow);
+                _markerTexture.Apply();
             }
 
             var gm = GameObject.Find("_MusicEditorAudioPlayer");
@@ -81,6 +92,11 @@ namespace Pingle.EditorTools
             {
                 _fileButtonStyle = new GUIStyle(GUI.skin.GetStyle("Button"));
                 _fileButtonStyle.alignment = TextAnchor.MiddleRight;
+            }
+
+            if (_markerButtonStyle == null)
+            {
+                _markerButtonStyle = new GUIStyle();
             }
         }
 
@@ -167,7 +183,7 @@ namespace Pingle.EditorTools
             GUILayout.Label("Frequency", GUILayout.Width(65));
             GUILayout.TextField(frequency, GUILayout.Width(60));
 
-            GUILayout.Label("Length", GUILayout.Width(40));
+            GUILayout.Label("Length", GUILayout.Width(41));
             GUILayout.TextField(duration, GUILayout.Width(40));
 
             GUILayout.Label("Channels", GUILayout.Width(55));
@@ -183,6 +199,8 @@ namespace Pingle.EditorTools
             var textureRect = GUILayoutUtility.GetRect(100, 200);
             if (Event.current.type == EventType.Repaint)
                 _previewRect = textureRect;
+
+            GUILayoutUtility.GetRect(100, 30);
 
             if (_previewTexture == null || _previewTexture.width != _previewRect.width || _previewTexture.height != _previewRect.height || _previewOutdated)
             {
@@ -200,8 +218,8 @@ namespace Pingle.EditorTools
 
             if (_selection.x != _selection.y)
             {
-                var startX = SampleToPreviewX(_selection.x);
-                var endX = SampleToPreviewX(_selection.y);
+                var startX = SampleToPreviewXLocal(_selection.x);
+                var endX = SampleToPreviewXLocal(_selection.y);
                 var rect = new Rect(_previewRect.x + startX, _previewRect.y, endX - startX, _previewRect.height);
                 GUI.DrawTexture(rect, _selectionBackgroundTexture);
             }
@@ -233,7 +251,7 @@ namespace Pingle.EditorTools
                 }
             }
 
-            PreviewProcessMouseClickEvent();
+            PreviewProcessLeftMouseClickEvent();
         }
 
         private void PreviewScrollBarZoom()
@@ -271,16 +289,74 @@ namespace Pingle.EditorTools
             }
         }
 
-        private Rect SampleToPreviewSliderRect(int sample)
+        private void Markers()
         {
-            var sliderStart = SampleToPreviewX(sample);
-            return new Rect(_previewRect.x + sliderStart, _previewRect.y, 1, _previewRect.height);
+            for (var i = _markers.Count - 1; i >= 0; i--)
+            {
+                var markerPos = _markers[i];
+                if (markerPos < _preview.x || markerPos > _preview.y) continue;
+
+                var rect = SampleToPreviewSliderRect(markerPos);
+                GUI.DrawTexture(rect, _markerTexture);
+
+                rect = SampleToPreviewMarkerRect(markerPos, 10);
+                GUI.DrawTexture(rect, _markerTexture);
+                if (GUI.Button(rect, "", _markerButtonStyle))
+                {
+                    _markers.RemoveAt(i);
+                    TryExportMarkers();
+                }
+            }
+
+            var mousePos = Event.current.mousePosition;
+            if (!_previewRect.Contains(mousePos) || Event.current.button != 1) return;
+
+            var markerIndex = FindMarkerAtMousePosition(mousePos);
+
+            if (Event.current.type == EventType.MouseDown && markerIndex < 0)
+            {
+                var sample = MouseToSamplePos(mousePos);
+                _markers.Add(sample);
+                Repaint();
+                TryExportMarkers();
+            }
+
+            if (Event.current.type == EventType.MouseDrag && markerIndex >= 0)
+            {
+                _markers.RemoveAt(markerIndex);
+                _markers.Add(MouseToSamplePos(mousePos));
+                Repaint();
+                TryExportMarkers();
+            }
         }
 
-        private void PreviewProcessMouseClickEvent()
+        private int FindMarkerAtMousePosition(Vector2 mousePos)
+        {
+            for (var i = _markers.Count - 1; i >= 0; i--)
+            {
+                var sampleX = _previewRect.x + SampleToPreviewXLocal(_markers[i]);
+                if (Mathf.Abs(sampleX - mousePos.x) <= 10) return i;
+            }
+
+            return -1;
+        }
+
+        private Rect SampleToPreviewSliderRect(int sample)
+        {
+            var sliderStart = SampleToPreviewXLocal(sample);
+            return new Rect(_previewRect.x + sliderStart, _previewRect.y, 1, _previewRect.height + 10);
+        }
+
+        private Rect SampleToPreviewMarkerRect(int sample, int markerSize)
+        {
+            var markerStart = SampleToPreviewXLocal(sample);
+            return new Rect(_previewRect.x + markerStart - markerSize / 2, _previewRect.y + _previewRect.height + 10, markerSize, markerSize);
+        }
+
+        private void PreviewProcessLeftMouseClickEvent()
         {
             var mousePos = Event.current.mousePosition;
-            if (!_previewRect.Contains(mousePos))
+            if (!_previewRect.Contains(mousePos) || Event.current.button != 0)
             {
                 _previewMouseDown = false;
                 return;
@@ -308,7 +384,7 @@ namespace Pingle.EditorTools
             return _preview.x + (int)((_preview.y - _preview.x) * xNormalized);
         }
 
-        private float SampleToPreviewX(int sample)
+        private float SampleToPreviewXLocal(int sample)
         {
             return _previewRect.width * (sample - (float)_preview.x) / (_preview.y - _preview.x);
         }
@@ -334,6 +410,65 @@ namespace Pingle.EditorTools
             _preview.y = _currentClip != null ? _currentClip.samples : 0;
             _selection.x = 0;
             _selection.y = 0;
+            TryImportMarkers();
+        }
+
+        private void TryImportMarkers()
+        {
+            try
+            {
+                _markers.Clear();
+
+                if (_currentClip == null) return;
+
+                var audioPath = GetAssetFullPath(_currentClip);
+                var jsonPath = GetMarkersJsonPath(audioPath);
+                if (!File.Exists(jsonPath)) return;
+
+                var json = File.ReadAllText(jsonPath);
+                var data = JsonUtility.FromJson<MusicData>(json);
+                _markers.AddRange(data.Markers.Where(m => m > 0 && m <= _currentClip.samples));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        private void TryExportMarkers()
+        {
+            if (_currentClip == null) return;
+
+            try
+            {
+                var data = new MusicData()
+                {
+                    Markers = _markers
+                };
+
+                var audioPath = GetAssetFullPath(_currentClip);
+                var jsonPath = GetMarkersJsonPath(audioPath);
+                var json = JsonUtility.ToJson(data);
+                File.WriteAllText(jsonPath, json);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        private string GetMarkersJsonPath(string clipPath)
+        {
+            var fileName = Path.GetFileName(clipPath);
+            var folderPath = Path.GetDirectoryName(clipPath);
+            return Path.Combine(folderPath, fileName + ".json");
+        }
+
+        private string GetAssetFullPath<T>(T obj) where T : UnityEngine.Object
+        {
+            var assetPath = AssetDatabase.GetAssetPath(obj);
+            var dataPath = Application.dataPath.Replace("Assets", "");
+            return Path.Combine(dataPath, assetPath);
         }
     }
 }
