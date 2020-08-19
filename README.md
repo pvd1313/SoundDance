@@ -9,8 +9,12 @@ Click "Play", "Stop" to control music playing, click loop to loop while playing.
 
 Click & Hold LMB to choose sector, press CTRL+A to select all.
 
-Click & Hold RMB to add/drag keys, press square to remove key. Press Delete to remove keys in sector.
+Click & Hold RMB to add/drag keys, press square to remove key. Press Delete to remove keys in selected sector.
 
 Click "Database" -> "Open" & "Save" to manage keys database. Make sure to load database if it exists before performing any work.
 
-Scroll MMB to zoom. Press CTRL+Z to zoom into sector.
+Scroll MMB to zoom. Press CTRL+Z to zoom into selected sector.
+
+Click "Place beats" to place beats inside selected sector.
+
+Click "Compute BPM" to compute beats per minute on selected sector, each key is imaged as a beat.
