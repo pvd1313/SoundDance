@@ -8,7 +8,7 @@ using UnityEngine;
 
 using Debug = UnityEngine.Debug;
 
-namespace Pingle.EditorTools
+namespace Pingle.SoundGame.Editor
 {
     public static class AubioTrack
     {

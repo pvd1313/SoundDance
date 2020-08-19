@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Pingle.EditorTools
+namespace Pingle.SoundGame.Data
 {
     [System.Serializable]
     public class MusicData

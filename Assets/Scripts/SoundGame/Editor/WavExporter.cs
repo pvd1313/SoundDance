@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using UnityEngine;
 
-namespace Pingle.EditorTools
+namespace Pingle.SoundGame.Editor
 {
     // https://stackoverflow.com/questions/50864146/create-a-wav-file-from-unity-audioclip
     public static class WavExporter

@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using System;
 
-namespace Pingle.EditorTools
+namespace Pingle.SoundGame.Editor
 {
     public class MusicEditorWindow : EditorWindow
     {
@@ -105,39 +105,6 @@ namespace Pingle.EditorTools
             EditorGUI.BeginDisabledGroup(true);
             GUILayout.TextField(_analyzeBPM, GUILayout.Width(30));
             EditorGUI.EndDisabledGroup();
-
-            //if (GUILayout.Button("Import keys...", GUILayout.Width(100)) && _currentClip != null)
-            //{
-            //    var file = EditorUtility.OpenFilePanel("Keys text file", "/", "");
-            //    if (File.Exists(file))
-            //    {
-            //        try
-            //        {
-            //            var clipLength = _currentClip.length;
-            //            var sampleCount = _currentClip.samples;
-            //            var samples = File.ReadAllLines(file)
-            //                .Where(l => !string.IsNullOrEmpty(l))
-            //                .Select(l => (int)(sampleCount * (float.Parse(l) / clipLength)));
-            //            _markers.Clear();
-            //            _markers.AddRange(samples);
-            //            Repaint();
-            //            TryExportCurrentClipMarkers();
-            //            if (_markers.Count > 1)
-            //            {
-            //                var timeWindow = (float)(_markers.Last() - _markers.First()) / _currentClip.frequency;
-            //                _analyzeBPM = (int)((_markers.Count / timeWindow) * 60);
-            //            }  
-            //            else
-            //            {
-            //                _analyzeBPM = -1;
-            //            }
-            //        }
-            //        catch (Exception e)
-            //        {
-            //            Debug.LogException(e);
-            //        }
-            //    }
-            //}
 
             GUILayout.EndHorizontal();
         }

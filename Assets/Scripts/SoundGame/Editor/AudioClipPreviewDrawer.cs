@@ -2,7 +2,7 @@
 using System.Linq;
 using UnityEngine;
 
-namespace Pingle.EditorTools
+namespace Pingle.SoundGame.Editor
 {
     public static class AudioClipPreviewDrawer
     {
