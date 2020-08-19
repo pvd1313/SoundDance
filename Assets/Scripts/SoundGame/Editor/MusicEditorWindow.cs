@@ -153,6 +153,8 @@ namespace Pingle.SoundGame.Editor
             {
                 _audioSource = new GameObject("_MusicEditorAudioPlayer").AddComponent<AudioSource>();
             }
+            _audioSource.playOnAwake = false;
+            gm.hideFlags |= HideFlags.HideAndDontSave;
 
             if (_fileButtonStyle == null)
             {

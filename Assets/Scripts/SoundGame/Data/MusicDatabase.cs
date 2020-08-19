@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Pingle.SoundGame.Data
+namespace Pingle.SoundGame
 {
     [System.Serializable]
     public class MusicDatabase
