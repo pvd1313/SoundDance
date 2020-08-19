@@ -96,6 +96,10 @@ namespace Pingle.EditorTools
                     var time = Mathf.Max(0.01f, delta / _currentClip.frequency);
                     _analyzeBPM = ((int)(selectedMarkers.Count() / time * 60)).ToString();
                 }
+                else
+                {
+                    _analyzeBPM = "";
+                }
             }
 
             EditorGUI.BeginDisabledGroup(true);
