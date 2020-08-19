@@ -27,14 +27,20 @@ namespace Pingle.EditorTools
             }
 
             var wavPath = Path.GetTempFileName();
+            var beatsPath = Path.GetTempFileName();
 
             try
             {
-                WavSaver.Save(wavPath, audioClip);
-                var beatsText = ImportBeats(exePath, wavPath);
-                if (!string.IsNullOrEmpty(beatsText))
+                WavExporter.ExportClip(audioClip, wavPath);
+
+                if (ExportBeats(exePath, wavPath, beatsPath))
                 {
-                    return ParseBeats(beatsText, audioClip);
+                    var beats = ParseBeats(beatsPath);
+
+                    File.Delete(wavPath);
+                    File.Delete(beatsPath);
+
+                    return beats;
                 }
             }
             catch (Exception e)
@@ -43,15 +49,16 @@ namespace Pingle.EditorTools
             }
 
             File.Delete(wavPath);
+            File.Delete(beatsPath);
 
             return EmptyList;
         }
 
-        private static string ImportBeats(string aubioPath, string inputFile)
+        private static bool ExportBeats(string aubioPath, string inputFile, string outputFile)
         {
             var process = new Process();
-            process.StartInfo.FileName = aubioPath;
-            process.StartInfo.Arguments = $@"-t 1 -i ""{inputFile}""";
+            process.StartInfo.FileName = "cmd.exe";
+            process.StartInfo.Arguments = $@"/C {aubioPath} >> {outputFile} -t 1 -T samples -i ""{inputFile}""";
             process.StartInfo.CreateNoWindow = true;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
@@ -63,7 +70,7 @@ namespace Pingle.EditorTools
 
             if (process.HasExited && process.ExitCode == 0)
             {
-                return process.StandardOutput.ReadToEnd();
+                return true;
             }            
 
             if (!process.HasExited)
@@ -74,19 +81,16 @@ namespace Pingle.EditorTools
 
             process.Close();
 
-            return null;
+            return false;
         }
 
-        private static List<int> ParseBeats(string text, AudioClip audioClip)
+        private static List<int> ParseBeats(string fileName)
         {
-            var result = new List<int>();
-            var clipLength = audioClip.length;
-            var sampleCount = audioClip.samples;
-
-            var samples = text.Split(NewLineSeparator, StringSplitOptions.RemoveEmptyEntries)
-                .Select(l => (int)(sampleCount * (float.Parse(l) / clipLength)));
+            var text = File.ReadAllText(fileName);
+            var samples = text.Split(NewLineSeparator, StringSplitOptions.RemoveEmptyEntries).Select(l => int.Parse(l));
 
             return samples.ToList();
         }
+
     }
 }
