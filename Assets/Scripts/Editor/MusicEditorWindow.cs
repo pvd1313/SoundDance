@@ -387,6 +387,17 @@ namespace Pingle.EditorTools
                 Repaint();
             }
 
+            if (_previewRect.Contains(mousePos) && Event.current.modifiers.HasFlag(EventModifiers.Control) &&
+                Event.current.keyCode == KeyCode.Z && _selection.x != _selection.y)
+            {
+                var sMin = Mathf.Min(_selection.x, _selection.y);
+                var sMax = Mathf.Max(_selection.x, _selection.y);
+                _preview.x = sMin;
+                _preview.y = sMax;
+                _previewOutdated = true;
+                Repaint();
+            }
+
             var previewX = GUILayout.HorizontalScrollbar(_preview.x, zoom, 0, sampleCount);
             if ((int)previewX != _preview.x)
             {
