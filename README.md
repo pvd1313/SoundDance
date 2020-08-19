@@ -12,3 +12,5 @@ Click & Hold LMB to choose sector, press CTRL+A to select all.
 Click & Hold RMB to add/drag keys, press square to remove key. Press Delete to remove keys in sector.
 
 Click "Database" -> "Open" & "Save" to manage keys database. Make sure to load database if it exists before performing any work.
+
+Scroll MMB to zoom. Press CTRL+Z to zoom into sector.
