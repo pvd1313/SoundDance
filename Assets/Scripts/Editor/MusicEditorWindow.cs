@@ -417,6 +417,27 @@ namespace Pingle.EditorTools
             }
 
             var mousePos = Event.current.mousePosition;
+
+            if (_previewRect.Contains(mousePos) && Event.current.keyCode == KeyCode.Delete)
+            {
+                var markersCount = _markers.Count;
+                var sMin = Mathf.Min(_selection.x, _selection.y);
+                var sMax = Mathf.Max(_selection.x, _selection.y);
+                for (var i = _markers.Count - 1; i >= 0; i--)
+                {
+                    if (_markers[i] >= sMin && _markers[i] <= sMax)
+                    {
+                        _markers.RemoveAt(i);
+                    }
+                }
+
+                if (markersCount != _markers.Count)
+                {
+                    TryExportCurrentClipMarkers();
+                    Repaint();
+                }
+            }
+
             if (!_previewRect.Contains(mousePos) || Event.current.button != 1)
             {
                 _draggingMouseSample = -1;
