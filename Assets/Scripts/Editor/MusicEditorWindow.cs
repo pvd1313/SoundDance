@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEngine;
+using System;
 
 namespace Pingle.EditorTools
 {
@@ -82,12 +81,44 @@ namespace Pingle.EditorTools
 
             if (GUILayout.Button("Analyze clip", GUILayout.Width(100)) && _currentClip != null)
             {
-                var detector = new BeatDetector(_currentClip);
-                var beats = detector.DetectBeats();
+                var beats = AubioTrack.DetectBeats(_currentClip);
                 _markers.Clear();
                 _markers.AddRange(beats);
                 TryExportCurrentClipMarkers();
                 _analyzeBPM = (int)((beats.Count / _currentClip.length) * 60);
+            }
+
+            if (GUILayout.Button("Import keys...", GUILayout.Width(100)) && _currentClip != null)
+            {
+                var file = EditorUtility.OpenFilePanel("Keys text file", "/", "");
+                if (File.Exists(file))
+                {
+                    try
+                    {
+                        var clipLength = _currentClip.length;
+                        var sampleCount = _currentClip.samples;
+                        var samples = File.ReadAllLines(file)
+                            .Where(l => !string.IsNullOrEmpty(l))
+                            .Select(l => (int)(sampleCount * (float.Parse(l) / clipLength)));
+                        _markers.Clear();
+                        _markers.AddRange(samples);
+                        Repaint();
+                        TryExportCurrentClipMarkers();
+                        if (_markers.Count > 1)
+                        {
+                            var timeWindow = (float)(_markers.Last() - _markers.First()) / _currentClip.frequency;
+                            _analyzeBPM = (int)((_markers.Count / timeWindow) * 60);
+                        }  
+                        else
+                        {
+                            _analyzeBPM = -1;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
 
             GUILayout.EndHorizontal();
@@ -171,7 +202,7 @@ namespace Pingle.EditorTools
             EditorGUI.EndDisabledGroup();
             if (GUILayout.Button("Open...", GUILayout.Width(100)))
             {
-                _folderPath = EditorUtility.OpenFolderPanel("Select music folder", "/Assets", "");
+                _folderPath = EditorUtility.OpenFolderPanel("Select music folder", "/", "");
                 _folderItems = Directory.GetFiles(_folderPath)
                     .Select(f => TryGetAudioAssetDatabasePath(f))
                     .Where(f => f != null).ToArray();
@@ -251,7 +282,7 @@ namespace Pingle.EditorTools
             EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(channels, GUILayout.Width(15)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Cursor", GUILayout.Width(41));
-            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_cursorText, GUILayout.Width(57)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_cursorText, GUILayout.Width(45)); EditorGUI.EndDisabledGroup();
 
             GUILayout.EndHorizontal();
         }
@@ -259,7 +290,7 @@ namespace Pingle.EditorTools
         private string SampleToPreciseTime(int sample)
         {
             if (_currentClip == null) return "";
-            return TimeSpan.FromSeconds(sample / (float)_currentClip.frequency).ToString(@"mm\:ss\.ff");
+            return (sample / (float)_currentClip.frequency).ToString("F2");
         }
 
         private void AudioPreviewTimeline()
@@ -286,7 +317,7 @@ namespace Pingle.EditorTools
                 GUI.DrawTexture(lineRect, _timelineTexture);
 
                 var textRect = new Rect(_timelineRect.x + x, _timelineRect.y + 3, TimelineSectionWidth, _timelineRect.height);
-                var timeText = TimeSpan.FromSeconds((firstSection + i) * resultSize).ToString(@"mm\:ss");
+                var timeText = ((int)((firstSection + i) * resultSize)).ToString();
                 GUI.Label(textRect, timeText);
             }
 
@@ -382,7 +413,7 @@ namespace Pingle.EditorTools
                 }
 
                 _preview.x = Mathf.Max(0, hoveredSample - (int)(zoom * hoveredPart));
-                _preview.y = Math.Min(sampleCount, _preview.x + zoom);
+                _preview.y = Mathf.Min(sampleCount, _preview.x + zoom);
                 _previewOutdated = true;
                 Repaint();
             }
