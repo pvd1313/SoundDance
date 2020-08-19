@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEngine;
 
@@ -347,6 +348,14 @@ namespace Pingle.EditorTools
                         _audioSource.Stop();
                     }
                 }
+            }
+
+            if (_previewRect.Contains(Event.current.mousePosition) && Event.current.keyCode == KeyCode.A &&
+                Event.current.modifiers.HasFlag(EventModifiers.Control)) 
+            {
+                _selection.x = 0;
+                _selection.y = _currentClip == null ? 1 : _currentClip.samples;
+                Repaint();
             }
 
             PreviewProcessLeftMouseClickEvent();
