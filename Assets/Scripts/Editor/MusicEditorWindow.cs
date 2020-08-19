@@ -44,7 +44,7 @@ namespace Pingle.EditorTools
         private List<int> _markers = new List<int>();
         private string _musicDatabasePath;
         private string _cursorText;
-        private int _analyzeBPM;
+        private string _analyzeBPM;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -73,20 +73,34 @@ namespace Pingle.EditorTools
         {
             GUILayout.BeginHorizontal();
 
-            GUILayout.Label("BPM", GUILayout.Width(30));
+            var sMin = Mathf.Min(_selection.x, _selection.y);
+            var sMax = Mathf.Max(_selection.x, _selection.y);
+
+            if (GUILayout.Button("Place beats", GUILayout.Width(100)) && _currentClip != null && sMin != sMax)
+            {
+                for (var i = _markers.Count - 1; i >= 0; i--)
+                    if (_markers[i] >= sMin && _markers[i] <= sMax)
+                        _markers.RemoveAt(i);
+
+                _markers.AddRange(AubioTrack.DetectBeats(_currentClip).Where(p => p >= sMin && p <= sMax));
+
+                TryExportCurrentClipMarkers();
+            }
+
+            if (GUILayout.Button("Compute BPM", GUILayout.Width(100)) && _currentClip != null)
+            {
+                var selectedMarkers = _markers.Where(p => p >= sMin && p <= sMax);
+                if (selectedMarkers.Any())
+                {
+                    var delta = selectedMarkers.Max() - selectedMarkers.Min();
+                    var time = Mathf.Max(0.01f, delta / _currentClip.frequency);
+                    _analyzeBPM = ((int)(selectedMarkers.Count() / time * 60)).ToString();
+                }
+            }
 
             EditorGUI.BeginDisabledGroup(true);
-            GUILayout.TextField(_analyzeBPM.ToString(), GUILayout.Width(30));
+            GUILayout.TextField(_analyzeBPM, GUILayout.Width(30));
             EditorGUI.EndDisabledGroup();
-
-            if (GUILayout.Button("Analyze clip", GUILayout.Width(100)) && _currentClip != null)
-            {
-                var beats = AubioTrack.DetectBeats(_currentClip);
-                _markers.Clear();
-                _markers.AddRange(beats);
-                TryExportCurrentClipMarkers();
-                _analyzeBPM = (int)((beats.Count / _currentClip.length) * 60);
-            }
 
             //if (GUILayout.Button("Import keys...", GUILayout.Width(100)) && _currentClip != null)
             //{
@@ -600,6 +614,7 @@ namespace Pingle.EditorTools
             _preview.y = _currentClip != null ? _currentClip.samples : 0;
             _selection.x = 0;
             _selection.y = 0;
+            _analyzeBPM = "";
             TryImportCurrentClipMarkers();
         }
 
