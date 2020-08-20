@@ -11,6 +11,7 @@ namespace Pingle.SoundGame
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private List<MovementData> _moves;
         [SerializeField] private float _pressDuration;
+        [SerializeField] private float _previewMaxTime;
 
         private List<int> _musicKeys;
         private int _nextMovementSample = -1;
@@ -18,6 +19,7 @@ namespace Pingle.SoundGame
         private MovementData _nextMovement;
         private bool _nextMovementPressed = true;
         private int _pressDurationSamples;
+        private int _previewMaxTimeSamples;
 
 
         private void Start()
@@ -36,6 +38,7 @@ namespace Pingle.SoundGame
                 return;
 
             _pressDurationSamples = (int)(_pressDuration * _audioSource.clip.frequency);
+            _previewMaxTimeSamples = (int)(_previewMaxTime * _audioSource.clip.frequency);
 
             _musicKeys = new List<int>(musicData.Markers.OrderBy(k => k));
 
@@ -46,7 +49,7 @@ namespace Pingle.SoundGame
 
         private void Update()
         {
-            if (_audioSource.timeSamples > _nextMovementSample + _pressDurationSamples)
+            if (_audioSource.timeSamples > _nextMovementSample + _pressDurationSamples || _nextMovementSample == -1)
             {
                 _nextMovementNumber ++;
 
@@ -72,17 +75,7 @@ namespace Pingle.SoundGame
                 _nextMovementSample = _musicKeys[_nextMovementNumber];
             }
 
-
-            float progress;
-            if (_nextMovementNumber - 1 < 0)
-            {
-                progress = (float)_audioSource.timeSamples / _nextMovementSample;
-            }
-            else
-            {
-                var prevSample = _musicKeys[_nextMovementNumber - 1];
-                progress = 1 - (_nextMovementSample - (float)_audioSource.timeSamples) / (_nextMovementSample - prevSample);
-            }
+            var progress = 1 - Mathf.Clamp01((_nextMovementSample - _audioSource.timeSamples) / (float) _previewMaxTimeSamples);
 
             if (Input.anyKeyDown)
             {
@@ -99,8 +92,6 @@ namespace Pingle.SoundGame
                 
 
             var color = _spriteRenderer.color;
-
-            progress = Mathf.Min(1, progress);
             transform.localScale = Vector3.one + Vector3.one * progress * 0.5f;
             color.a = _nextMovementPressed ? 0.1f : progress;
             _spriteRenderer.color = color;
