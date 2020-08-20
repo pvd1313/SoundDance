@@ -401,8 +401,7 @@ namespace Pingle.SoundGame.Editor
                 }
             }
 
-            if (_previewRect.Contains(Event.current.mousePosition) && Event.current.keyCode == KeyCode.A &&
-                Event.current.modifiers.HasFlag(EventModifiers.Control)) 
+            if (Event.current.keyCode == KeyCode.A && Event.current.modifiers.HasFlag(EventModifiers.Control)) 
             {
                 _selection.x = 0;
                 _selection.y = _currentClip == null ? 1 : _currentClip.samples;
@@ -438,8 +437,7 @@ namespace Pingle.SoundGame.Editor
                 Repaint();
             }
 
-            if (_previewRect.Contains(mousePos) && Event.current.modifiers.HasFlag(EventModifiers.Control) &&
-                Event.current.keyCode == KeyCode.Z && _selection.x != _selection.y)
+            if (Event.current.modifiers.HasFlag(EventModifiers.Control) && Event.current.keyCode == KeyCode.Z && _selection.x != _selection.y)
             {
                 var sMin = Mathf.Min(_selection.x, _selection.y);
                 var sMax = Mathf.Max(_selection.x, _selection.y);
@@ -494,7 +492,7 @@ namespace Pingle.SoundGame.Editor
 
             var mousePos = Event.current.mousePosition;
 
-            if (_previewRect.Contains(mousePos) && Event.current.keyCode == KeyCode.Delete)
+            if (Event.current.keyCode == KeyCode.Delete)
             {
                 var sMin = Mathf.Min(_selection.x, _selection.y);
                 var sMax = Mathf.Max(_selection.x, _selection.y);
