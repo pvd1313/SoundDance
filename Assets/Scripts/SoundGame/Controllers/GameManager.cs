@@ -15,10 +15,10 @@ namespace Pingle.SoundGame
         [SerializeField] private List<AudioClip> _availableMusic;
 
         private List<int> _musicKeys;
-        private int _nextMovementSample = -1;
-        private int _nextMovementNumber = -1;
+        private int _nextMovementSample;
+        private int _nextMovementNumber;
         private MovementData _nextMovement;
-        private bool _nextMovementPressed = true;
+        private bool _nextMovementPressed;
         private int _pressDurationSamples;
         private int _previewMaxTimeSamples;
         private bool _gameStarted;
@@ -29,6 +29,10 @@ namespace Pingle.SoundGame
             if (_audioDatabase == null || _audioSource == null || audioClip == null || _spriteRenderer == null)
                 return;
 
+            _audioSource.Stop();
+            _nextMovementNumber = -1;
+            _nextMovementSample = -1;
+            _nextMovementPressed = true;
             _audioSource.clip = audioClip;
 
             var musicDatabase = JsonUtility.FromJson(_audioDatabase.text, typeof(MusicDatabase)) as MusicDatabase;
