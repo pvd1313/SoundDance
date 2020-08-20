@@ -97,7 +97,8 @@ namespace Pingle.SoundGame.Editor
 
             EditorGUILayout.LabelField("", GUI.skin.verticalSlider, GUILayout.Width(10));
 
-            if (GUILayout.Button("Place beats", GUILayout.Width(80)) && _currentClip != null && sMin != sMax)
+            var placeBeats = GUILayout.Button("Place beats", GUILayout.Width(80)) || Event.current.keyCode == KeyCode.B;
+            if (placeBeats && _currentClip != null && sMin != sMax)
             {
                 for (var i = _markers.Count - 1; i >= 0; i--)
                     if (_markers[i] >= sMin && _markers[i] <= sMax)
@@ -105,6 +106,7 @@ namespace Pingle.SoundGame.Editor
 
                 ComputePlaceBeats(_beatPlacerPeriod, _beatsPlacerResultBuffer);
                 _markers.AddRange(_beatsPlacerResultBuffer);
+                Repaint();
                 TryExportCurrentClipMarkers();
             }
 
