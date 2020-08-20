@@ -11,13 +11,15 @@ namespace Pingle.SoundGame
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private List<MovementData> _moves;
         [SerializeField] private int _keyIncrementor;
+        [SerializeField] private float _pressDuration;
 
         private List<int> _musicKeys;
         private int _nextMovementSample = -1;
         private int _nextMovementNumber = -1;
         private MovementData _nextMovement;
         private bool _nextMovementPressed = true;
-        
+        private int _pressDurationSamples;
+
 
         private void Start()
         {
@@ -34,6 +36,8 @@ namespace Pingle.SoundGame
             if (musicData == null || musicData.Markers == null || musicData.Markers.Count == 0)
                 return;
 
+            _pressDurationSamples = (int)(_pressDuration * _audioSource.clip.frequency);
+
             _musicKeys = new List<int>(musicData.Markers);
 
             enabled = true;
@@ -43,7 +47,7 @@ namespace Pingle.SoundGame
 
         private void Update()
         {
-            if (_audioSource.timeSamples > _nextMovementSample)
+            if (_audioSource.timeSamples > _nextMovementSample + _pressDurationSamples)
             {
                 _nextMovementNumber += _nextMovementNumber == -1 ? 1 : _keyIncrementor;
 
@@ -83,7 +87,8 @@ namespace Pingle.SoundGame
 
             if (Input.anyKeyDown)
             {
-                if (Input.GetKeyDown(_nextMovement.Key) && !_nextMovementPressed && progress > 0.5f)
+                if (Input.GetKeyDown(_nextMovement.Key) && !_nextMovementPressed && 
+                    Mathf.Abs(_nextMovementSample - _audioSource.timeSamples) <= _pressDurationSamples)
                 {
                     _nextMovementPressed = true;
                 }
@@ -96,8 +101,8 @@ namespace Pingle.SoundGame
 
             var color = _spriteRenderer.color;
 
-            //progress = Mathf.Pow(progress, 0.8f);
-            transform.localScale = Vector3.one + Vector3.one * progress;
+            progress = Mathf.Min(1, progress);
+            transform.localScale = Vector3.one + Vector3.one * progress * 0.5f;
             color.a = _nextMovementPressed ? 0.1f : progress;
             _spriteRenderer.color = color;
         }
