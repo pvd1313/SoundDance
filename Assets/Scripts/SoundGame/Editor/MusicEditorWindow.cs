@@ -29,6 +29,7 @@ namespace Pingle.SoundGame.Editor
         private Texture2D _playingTexture;
         private Texture2D _markerTexture;
         private Texture2D _timelineTexture;
+        private Texture2D _beatMarkerTexture;
         private AudioSource _audioSource;
         private Vector2 _previewMouseStartPos;
         private bool _loopAudio;
@@ -42,9 +43,15 @@ namespace Pingle.SoundGame.Editor
         private int _draggingMouseSample;
         private MusicDatabase _musicDatabase;
         private List<int> _markers = new List<int>();
+        private List<int> _beats = new List<int>();
         private string _musicDatabasePath;
-        private string _cursorText;
-        private string _analyzeBPM;
+        private float _cursorPos;
+        private int _analyzeBPM;
+        private int _beatsPlacerSkipBeats;
+        private List<int> _beatsPlacerBuffer = new List<int>();
+        private bool _showAllBeats = true;
+        private string _currentClipDuration;
+        private string _currentClipFrequencyKHZ;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -76,34 +83,54 @@ namespace Pingle.SoundGame.Editor
             var sMin = Mathf.Min(_selection.x, _selection.y);
             var sMax = Mathf.Max(_selection.x, _selection.y);
 
-            if (GUILayout.Button("Place beats", GUILayout.Width(100)) && _currentClip != null && sMin != sMax)
+            if (GUILayout.Button("Compute beats", GUILayout.Width(100)))
+            {
+                _beats.Clear();
+                _beats.AddRange(AubioTrack.DetectBeats(_currentClip));
+                Repaint();
+            }
+
+            _showAllBeats = EditorGUILayout.ToggleLeft("Show", _showAllBeats, GUILayout.Width(50));
+
+            EditorGUILayout.LabelField("", GUI.skin.verticalSlider, GUILayout.Width(10));
+
+            if (GUILayout.Button("Place beats", GUILayout.Width(80)) && _currentClip != null && sMin != sMax)
             {
                 for (var i = _markers.Count - 1; i >= 0; i--)
                     if (_markers[i] >= sMin && _markers[i] <= sMax)
                         _markers.RemoveAt(i);
 
-                _markers.AddRange(AubioTrack.DetectBeats(_currentClip).Where(p => p >= sMin && p <= sMax));
+                _beatsPlacerBuffer.Clear();
+                _beatsPlacerBuffer.AddRange(_beats.Where(p => p >= sMin && p <= sMax));
+                for (var i = 0; i < _beatsPlacerBuffer.Count; i++)
+                    if (i % _beatsPlacerSkipBeats == 0)
+                        _markers.Add(_beatsPlacerBuffer[i]);
 
                 TryExportCurrentClipMarkers();
             }
 
-            if (GUILayout.Button("Compute BPM", GUILayout.Width(100)) && _currentClip != null)
+            GUILayout.Label("Every", GUILayout.Width(35));
+            _beatsPlacerSkipBeats = Mathf.Max(1, EditorGUILayout.IntField(_beatsPlacerSkipBeats, GUILayout.Width(25)));
+
+            EditorGUILayout.LabelField("", GUI.skin.verticalSlider, GUILayout.Width(10));
+
+            if (GUILayout.Button("Get BPM", GUILayout.Width(80)) && _currentClip != null)
             {
-                var selectedMarkers = _markers.Where(p => p >= sMin && p <= sMax);
-                if (selectedMarkers.Any())
+                var selectedBeats = _beats.Where(p => p >= sMin && p <= sMax);
+                if (selectedBeats.Any())
                 {
-                    var delta = selectedMarkers.Max() - selectedMarkers.Min();
+                    var delta = selectedBeats.Max() - selectedBeats.Min();
                     var time = Mathf.Max(0.01f, delta / _currentClip.frequency);
-                    _analyzeBPM = ((int)(selectedMarkers.Count() / time * 60)).ToString();
+                    _analyzeBPM = (int)(selectedBeats.Count() / time * 60);
                 }
                 else
                 {
-                    _analyzeBPM = "";
+                    _analyzeBPM = -1;
                 }
             }
 
             EditorGUI.BeginDisabledGroup(true);
-            GUILayout.TextField(_analyzeBPM, GUILayout.Width(30));
+            EditorGUILayout.IntField(_analyzeBPM, GUILayout.Width(30));
             EditorGUI.EndDisabledGroup();
 
             GUILayout.EndHorizontal();
@@ -178,6 +205,13 @@ namespace Pingle.SoundGame.Editor
                 _timelineTexture = new Texture2D(1, 1);
                 _timelineTexture.SetPixel(0, 0, Color.gray);
                 _timelineTexture.Apply();
+            }
+
+            if (_beatMarkerTexture == null)
+            {
+                _beatMarkerTexture = new Texture2D(1, 1);
+                _beatMarkerTexture.SetPixel(0, 0, new Color(0.8f, 0.8f, 0.8f, 0.3f));
+                _beatMarkerTexture.Apply();
             }
         }
 
@@ -254,30 +288,29 @@ namespace Pingle.SoundGame.Editor
         private void AudioInfo()
         {
             GUILayout.BeginHorizontal();
-
-            var frequencyKHZ = _currentClip == null ? "" : (_currentClip.frequency / 1000f).ToString() + " kHz";
-            var duration = _currentClip == null ? "" : new TimeSpan(0, 0, (int)(_currentClip.length)).ToString(@"mm\:ss");
-            var channels = _currentClip == null ? "" : _currentClip.channels.ToString();
+            
+            var channels = _currentClip == null ? 0 : _currentClip.channels;
 
             GUILayout.Label("Frequency", GUILayout.Width(65));
-            EditorGUI.BeginDisabledGroup(true);  GUILayout.TextField(frequencyKHZ, GUILayout.Width(60)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true);  GUILayout.TextField(_currentClipFrequencyKHZ, GUILayout.Width(60)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Length", GUILayout.Width(41));
-            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(duration, GUILayout.Width(40)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_currentClipDuration, GUILayout.Width(40)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Channels", GUILayout.Width(55));
-            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(channels, GUILayout.Width(15)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); EditorGUILayout.IntField(channels, GUILayout.Width(15)); EditorGUI.EndDisabledGroup();
 
             GUILayout.Label("Cursor", GUILayout.Width(41));
-            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_cursorText, GUILayout.Width(45)); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); EditorGUILayout.FloatField(_cursorPos, GUILayout.Width(45)); EditorGUI.EndDisabledGroup();
 
             GUILayout.EndHorizontal();
         }
 
-        private string SampleToPreciseTime(int sample)
+        private float SampleToPreciseTime(int sample)
         {
-            if (_currentClip == null) return "";
-            return (sample / (float)_currentClip.frequency).ToString("F2");
+            if (_currentClip == null) return 0;
+
+            return (sample / (float)_currentClip.frequency);
         }
 
         private void AudioPreviewTimeline()
@@ -429,6 +462,19 @@ namespace Pingle.SoundGame.Editor
 
         private void Markers()
         {
+            if (_showAllBeats)
+            {
+                foreach (var beat in _beats)
+                {
+                    if (beat < _preview.x || beat > _preview.y)
+                        continue;
+
+                    var x = SampleToPreviewXLocal(beat);
+                    var rect = new Rect(_previewRect.x + x, _previewRect.y, 1, _previewRect.height);
+                    GUI.DrawTexture(rect, _beatMarkerTexture);
+                }
+            }
+
             for (var i = _markers.Count - 1; i >= 0; i--)
             {
                 var markerPos = _markers[i];
@@ -450,9 +496,10 @@ namespace Pingle.SoundGame.Editor
 
             if (_previewRect.Contains(mousePos) && Event.current.keyCode == KeyCode.Delete)
             {
-                var markersCount = _markers.Count;
                 var sMin = Mathf.Min(_selection.x, _selection.y);
                 var sMax = Mathf.Max(_selection.x, _selection.y);
+
+                var markersCount = _markers.Count;
                 for (var i = _markers.Count - 1; i >= 0; i--)
                 {
                     if (_markers[i] >= sMin && _markers[i] <= sMax)
@@ -481,13 +528,13 @@ namespace Pingle.SoundGame.Editor
                 if (hoveredMarkerIndex > 0)
                 {
                     _draggingMouseSample = _markers[hoveredMarkerIndex];
-                    _cursorText = SampleToPreciseTime(_draggingMouseSample);
+                    _cursorPos = SampleToPreciseTime(_draggingMouseSample);
                 }
                 else
                 {
                     _draggingMouseSample = MouseToSamplePos(mousePos);
                     _markers.Add(_draggingMouseSample);
-                    _cursorText = SampleToPreciseTime(_draggingMouseSample);
+                    _cursorPos = SampleToPreciseTime(_draggingMouseSample);
                     Repaint();
                     TryExportCurrentClipMarkers();
                 }
@@ -498,7 +545,7 @@ namespace Pingle.SoundGame.Editor
             {
                 _markers.Remove(_draggingMouseSample);
                 _draggingMouseSample = MouseToSamplePos(mousePos);
-                _cursorText = SampleToPreciseTime(_draggingMouseSample);
+                _cursorPos = SampleToPreciseTime(_draggingMouseSample);
                 _markers.Add(_draggingMouseSample);
                 Repaint();
                 TryExportCurrentClipMarkers();
@@ -541,7 +588,7 @@ namespace Pingle.SoundGame.Editor
             {
                 _selection.x = MouseToSamplePos(mousePos);
                 _selection.y = _selection.x;
-                _cursorText = SampleToPreciseTime(_selection.x);
+                _cursorPos = SampleToPreciseTime(_selection.x);
                 _previewMouseStartPos = mousePos;
                 _previewMouseDown = true;
                 Repaint();
@@ -550,7 +597,7 @@ namespace Pingle.SoundGame.Editor
             if (_previewMouseDown && Event.current.type == EventType.MouseDrag && (Mathf.Abs(mousePos.x - _previewMouseStartPos.x) > 5))
             {
                 _selection.y = MouseToSamplePos(mousePos);
-                _cursorText = SampleToPreciseTime(_selection.y);
+                _cursorPos = SampleToPreciseTime(_selection.y);
                 Repaint();
             }
         }
@@ -587,7 +634,10 @@ namespace Pingle.SoundGame.Editor
             _preview.y = _currentClip != null ? _currentClip.samples : 0;
             _selection.x = 0;
             _selection.y = 0;
-            _analyzeBPM = "";
+            _analyzeBPM = -1;
+            _beats.Clear();
+            _currentClipDuration = _currentClip == null ? "" : new TimeSpan(0, 0, (int)(_currentClip.length)).ToString(@"mm\:ss");
+            _currentClipFrequencyKHZ = _currentClip == null ? "" : (_currentClip.frequency / 1000f).ToString() + " kHz";
             TryImportCurrentClipMarkers();
         }
 
