@@ -525,7 +525,7 @@ namespace Pingle.SoundGame.Editor
 
             if (Event.current.type == EventType.MouseDown)
             {
-                if (hoveredMarkerIndex > 0)
+                if (hoveredMarkerIndex >= 0)
                 {
                     _draggingMouseSample = _markers[hoveredMarkerIndex];
                     _cursorPos = SampleToPreciseTime(_draggingMouseSample);
