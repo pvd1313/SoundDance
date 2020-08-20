@@ -10,7 +10,6 @@ namespace Pingle.SoundGame
         [SerializeField] private TextAsset _audioDatabase;
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private List<MovementData> _moves;
-        [SerializeField] private int _keyIncrementor;
         [SerializeField] private float _pressDuration;
 
         private List<int> _musicKeys;
@@ -38,7 +37,7 @@ namespace Pingle.SoundGame
 
             _pressDurationSamples = (int)(_pressDuration * _audioSource.clip.frequency);
 
-            _musicKeys = new List<int>(musicData.Markers);
+            _musicKeys = new List<int>(musicData.Markers.OrderBy(k => k));
 
             enabled = true;
 
@@ -49,7 +48,7 @@ namespace Pingle.SoundGame
         {
             if (_audioSource.timeSamples > _nextMovementSample + _pressDurationSamples)
             {
-                _nextMovementNumber += _nextMovementNumber == -1 ? 1 : _keyIncrementor;
+                _nextMovementNumber ++;
 
                 if (!_nextMovementPressed)
                 {
@@ -75,13 +74,13 @@ namespace Pingle.SoundGame
 
 
             float progress;
-            if (_nextMovementNumber - _keyIncrementor < 0)
+            if (_nextMovementNumber - 1 < 0)
             {
                 progress = (float)_audioSource.timeSamples / _nextMovementSample;
             }
             else
             {
-                var prevSample = _musicKeys[_nextMovementNumber - _keyIncrementor];
+                var prevSample = _musicKeys[_nextMovementNumber - 1];
                 progress = 1 - (_nextMovementSample - (float)_audioSource.timeSamples) / (_nextMovementSample - prevSample);
             }
 
