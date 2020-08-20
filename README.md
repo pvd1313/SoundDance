@@ -15,6 +15,8 @@ Click "Database" -> "Open" & "Save" to manage keys database. Make sure to load d
 
 Scroll MMB to zoom. Press CTRL+Z to zoom into selected sector.
 
-Click "Place beats" to place beats inside selected sector.
+Click "Analyze music" to determine & display music beats.
 
-Click "Compute BPM" to compute beats per minute on selected sector, each key is imaged as a beat.
+Click "Place beats" | Click "B" to transfrom beats into keys. "Period" is used to control how keys distributed. E.g. 0 - means 1 beat = 1 key; 0.5 means than 1 beat = 1 key, but keys will be placed between beats. 2 means each one beat will be skipped and key will be placed; etc.
+
+Click "Get BPM" to compute beats per minute on selected sector, music must be analyzed first.
