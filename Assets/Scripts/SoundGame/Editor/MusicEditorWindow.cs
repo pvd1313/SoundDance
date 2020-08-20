@@ -30,6 +30,7 @@ namespace Pingle.SoundGame.Editor
         private Texture2D _markerTexture;
         private Texture2D _timelineTexture;
         private Texture2D _beatMarkerTexture;
+        private Texture2D _beatPlacerPreviewTexture;
         private AudioSource _audioSource;
         private Vector2 _previewMouseStartPos;
         private bool _loopAudio;
@@ -47,8 +48,10 @@ namespace Pingle.SoundGame.Editor
         private string _musicDatabasePath;
         private float _cursorPos;
         private int _analyzeBPM;
-        private int _beatsPlacerSkipBeats;
-        private List<int> _beatsPlacerBuffer = new List<int>();
+        private float _beatPlacerPeriod;
+        private List<int> _beatsPlacerWorkBuffer = new List<int>();
+        private List<int> _beatsPlacerResultBuffer = new List<int>();
+        private bool _beatPlacerPreview = true;
         private bool _showAllBeats = true;
         private string _currentClipDuration;
         private string _currentClipFrequencyKHZ;
@@ -83,7 +86,7 @@ namespace Pingle.SoundGame.Editor
             var sMin = Mathf.Min(_selection.x, _selection.y);
             var sMax = Mathf.Max(_selection.x, _selection.y);
 
-            if (GUILayout.Button("Compute beats", GUILayout.Width(100)))
+            if (GUILayout.Button("Analyze music", GUILayout.Width(100)))
             {
                 _beats.Clear();
                 _beats.AddRange(AubioTrack.DetectBeats(_currentClip));
@@ -100,17 +103,15 @@ namespace Pingle.SoundGame.Editor
                     if (_markers[i] >= sMin && _markers[i] <= sMax)
                         _markers.RemoveAt(i);
 
-                _beatsPlacerBuffer.Clear();
-                _beatsPlacerBuffer.AddRange(_beats.Where(p => p >= sMin && p <= sMax));
-                for (var i = 0; i < _beatsPlacerBuffer.Count; i++)
-                    if (i % _beatsPlacerSkipBeats == 0)
-                        _markers.Add(_beatsPlacerBuffer[i]);
-
+                ComputePlaceBeats(_beatPlacerPeriod, _beatsPlacerResultBuffer);
+                _markers.AddRange(_beatsPlacerResultBuffer);
                 TryExportCurrentClipMarkers();
             }
 
-            GUILayout.Label("Every", GUILayout.Width(35));
-            _beatsPlacerSkipBeats = Mathf.Max(1, EditorGUILayout.IntField(_beatsPlacerSkipBeats, GUILayout.Width(25)));
+            GUILayout.Label("Period", GUILayout.Width(40));
+            _beatPlacerPeriod = Mathf.Max(0, EditorGUILayout.FloatField(_beatPlacerPeriod, GUILayout.Width(25)));
+
+            _beatPlacerPreview = EditorGUILayout.ToggleLeft("Preview", _beatPlacerPreview, GUILayout.Width(60));
 
             EditorGUILayout.LabelField("", GUI.skin.verticalSlider, GUILayout.Width(10));
 
@@ -134,6 +135,29 @@ namespace Pingle.SoundGame.Editor
             EditorGUI.EndDisabledGroup();
 
             GUILayout.EndHorizontal();
+        }
+
+        private void ComputePlaceBeats(float period, List<int> result)
+        {
+            var sMin = Mathf.Min(_selection.x, _selection.y);
+            var sMax = Mathf.Max(_selection.x, _selection.y);
+            result.Clear();
+
+            _beatsPlacerWorkBuffer.Clear();
+            _beatsPlacerWorkBuffer.AddRange(_beats.Where(p => p >= sMin && p <= sMax));
+
+            var indexDelta = Mathf.FloorToInt(period) + 1;
+            var total = _beatsPlacerWorkBuffer.Count / indexDelta - 1;
+            var frac = period % 1;
+            if (total <= 0) return;
+
+            for (var i = 0; i < total; i++)
+            {
+                var left = _beatsPlacerWorkBuffer[i * indexDelta];
+                var right = _beatsPlacerWorkBuffer[i * indexDelta + 1];
+                var sample = (int)Mathf.Lerp(left, right, frac);
+                result.Add(sample);
+            }
         }
 
         private void AutosaveDatabase()
@@ -212,6 +236,13 @@ namespace Pingle.SoundGame.Editor
                 _beatMarkerTexture = new Texture2D(1, 1);
                 _beatMarkerTexture.SetPixel(0, 0, new Color(0.8f, 0.8f, 0.8f, 0.3f));
                 _beatMarkerTexture.Apply();
+            }
+
+            if (_beatPlacerPreviewTexture == null)
+            {
+                _beatPlacerPreviewTexture = new Texture2D(1, 1);
+                _beatPlacerPreviewTexture.SetPixel(0, 0, new Color(0, 1, 1, 1f));
+                _beatPlacerPreviewTexture.Apply();
             }
         }
 
@@ -460,6 +491,18 @@ namespace Pingle.SoundGame.Editor
 
         private void Markers()
         {
+            if (_beatPlacerPreview)
+            {
+                ComputePlaceBeats(_beatPlacerPeriod, _beatsPlacerResultBuffer);
+                foreach (var beat in _beatsPlacerResultBuffer)
+                    if (beat >= _preview.x && beat <= _preview.y)
+                    {
+                        var x = SampleToPreviewXLocal(beat);
+                        var rect = new Rect(_previewRect.x + x, _previewRect.y, 1, _previewRect.height);
+                        GUI.DrawTexture(rect, _beatPlacerPreviewTexture);
+                    }
+            }
+
             if (_showAllBeats)
             {
                 foreach (var beat in _beats)
