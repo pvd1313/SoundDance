@@ -67,6 +67,7 @@ namespace Pingle.SoundGame
                 if (_nextMovementNumber >= _musicKeys.Count)
                 {
                     _gameStarted = false;
+                    Debug.LogError("GAME FINISH");
                     return;
                 }
 

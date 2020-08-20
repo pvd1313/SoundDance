@@ -330,6 +330,8 @@ MonoBehaviour:
   _previewMaxTime: 1
   _availableMusic:
   - {fileID: 8300000, guid: 02805734401a0eb4399e319681e9aa7d, type: 3}
+  - {fileID: 8300000, guid: 8616bd92dcb23aa4586ac87bb7fe0530, type: 3}
+  - {fileID: 8300000, guid: ba00f5fe05d26764f8613e7c1f20c1de, type: 3}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
