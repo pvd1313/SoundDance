@@ -596,7 +596,8 @@ namespace Pingle.SoundGame.Editor
 
             if (GUILayout.Button("Open...", GUILayout.Width(60)))
             {
-                var filePath = EditorUtility.OpenFilePanel("Open database", "/", "json");
+                var directory = string.IsNullOrEmpty(_database.Path) ? "/" : Path.GetDirectoryName(_database.Path);
+                var filePath = EditorUtility.OpenFilePanel("Open database", directory, "json");
                 if (!string.IsNullOrEmpty(filePath))
                 {
                     _database.LoadDatabase(filePath);
@@ -607,7 +608,9 @@ namespace Pingle.SoundGame.Editor
 
             if (GUILayout.Button("Save...", GUILayout.Width(60)))
             {
-                var filePath = EditorUtility.SaveFilePanel("Save database", "/", "MusicDatabase", "json");
+                var directory = string.IsNullOrEmpty(_database.Path) ? "/" : Path.GetDirectoryName(_database.Path);
+                var fileName = string.IsNullOrEmpty(_database.Path) ? "MusicDatabase" : Path.GetFileNameWithoutExtension(_database.Path);
+                var filePath = EditorUtility.SaveFilePanel("Save database", directory, fileName, "json");
                 if (!string.IsNullOrEmpty(filePath))
                     _database.SaveDatabase(filePath);
             }
