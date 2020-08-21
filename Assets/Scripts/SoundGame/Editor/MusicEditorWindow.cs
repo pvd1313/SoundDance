@@ -158,10 +158,15 @@ namespace Pingle.SoundGame.Editor
             EditorGUI.EndDisabledGroup();
             if (GUILayout.Button("Open...", GUILayout.Width(100)))
             {
-                _folderPath = EditorUtility.OpenFolderPanel("Select music folder", "/", "");
-                _folderItems = Directory.GetFiles(_folderPath)
-                    .Select(f => TryGetAudioAssetDatabasePath(f))
-                    .Where(f => f != null).ToArray();
+                var startPath = string.IsNullOrEmpty(_folderPath) ? "/" : _folderPath;
+                _folderPath = EditorUtility.OpenFolderPanel("Select music folder", startPath, "");
+                if (!string.IsNullOrEmpty(_folderPath))
+                {
+                    _folderItems = Directory.GetFiles(_folderPath)
+                        .Select(f => TryGetAudioAssetDatabasePath(f))
+                        .Where(f => f != null).ToArray();
+                }
+                
             }
             EditorGUILayout.EndHorizontal();
 
