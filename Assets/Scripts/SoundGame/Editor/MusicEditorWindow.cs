@@ -43,6 +43,7 @@ namespace Pingle.SoundGame.Editor
         private bool _showAllBeats = true;
         private string _currentClipDuration;
         private string _currentClipFrequencyKHZ;
+        private Vector2 _databaseScroll;
 
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
@@ -63,8 +64,8 @@ namespace Pingle.SoundGame.Editor
             AudioPreview();
             PreviewScrollBarZoom();
             Markers();
-            MusicDatabaseControl();
             BeatControl();
+            MusicDatabaseControl();
         }
 
         private void BeatControl()
@@ -170,7 +171,7 @@ namespace Pingle.SoundGame.Editor
             }
             EditorGUILayout.EndHorizontal();
 
-            _audioScroll = EditorGUILayout.BeginScrollView(_audioScroll, GUILayout.Height(150));
+            _audioScroll = EditorGUILayout.BeginScrollView(_audioScroll, GUI.skin.box, GUILayout.Height(120));
             EditorGUILayout.BeginVertical();
 
             foreach (var item in _folderItems)
@@ -623,7 +624,59 @@ namespace Pingle.SoundGame.Editor
                     _database.SaveDatabase(filePath);
             }
 
+            EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(_database.Path));
+            if (GUILayout.Button("Reload", GUILayout.Width(60)))
+            {
+                _database.LoadDatabase(_database.Path);
+                if (_currentClip != null)
+                    _database.ImportMarkers(_currentClip.name, _currentClip.samples, _markers);
+            }
+            EditorGUI.EndDisabledGroup();
+
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("", GUILayout.Width(81));
+            EditorGUILayout.LabelField("Name", GUILayout.Width(200));
+            EditorGUILayout.LabelField("Total keys", GUILayout.Width(60));
+            GUILayout.EndHorizontal();
+
+            _databaseScroll = GUILayout.BeginScrollView(_databaseScroll, GUI.skin.box, GUILayout.Height(120));
+            GUILayout.BeginVertical(GUILayout.Height(10));
+            
+            MusicData toDelete = null;
+            MusicData toLoad = null;
+            foreach (var data in _database.Data)
+            {
+                GUILayout.BeginHorizontal();
+
+                if (GUILayout.Button("X", GUILayout.Width(20)))
+                    toDelete = data;
+                if (GUILayout.Button("Import", GUILayout.Width(50)))
+                    toLoad = data;
+
+                EditorGUILayout.SelectableLabel(data.MusicName, GUILayout.Width(200), GUILayout.Height(20));
+                EditorGUILayout.SelectableLabel(data.Markers.Count.ToString(), GUILayout.Width(60), GUILayout.Height(20));
+                GUILayout.EndHorizontal();
+            }
+
+            if (toDelete != null)
+            {
+                _database.RemoveEntry(toDelete.MusicName);
+                if (_currentClip != null && _currentClip.name == toDelete.MusicName)
+                    _markers.Clear();
+            }
+                
+
+            if (toLoad != null && _currentClip != null)
+            {
+                _database.ImportMarkers(toLoad.MusicName, _currentClip.samples, _markers);
+                _database.ExportMarkers(_currentClip.name, _markers);
+            }
+
+
+            GUILayout.EndVertical();
+            GUILayout.EndScrollView();
         }
     }
 }

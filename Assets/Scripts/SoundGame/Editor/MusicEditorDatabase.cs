@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,8 @@ namespace Pingle.SoundGame.Editor
     [System.Serializable]
     public class MusicEditorDatabase
     {
+        public IEnumerable<MusicData> Data => _database.Data;
+
         public string Path => _path;
 
         private string _path;
@@ -111,6 +114,19 @@ namespace Pingle.SoundGame.Editor
             catch (Exception e)
             {
                 Debug.LogException(e);
+            }
+        }
+
+        public void RemoveEntry(string name)
+        {
+            for (var i = _database.Data.Count - 1; i >= 0; i--)
+            {
+                if (_database.Data[i].MusicName == name)
+                {
+                    _database.Data.RemoveAt(i);
+                    _isDirty = true;
+                    return;
+                }
             }
         }
     }
