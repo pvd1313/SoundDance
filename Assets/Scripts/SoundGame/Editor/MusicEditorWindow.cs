@@ -636,29 +636,38 @@ namespace Pingle.SoundGame.Editor
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("", GUILayout.Width(81));
+            EditorGUILayout.LabelField("", GUILayout.Width(79));
             EditorGUILayout.LabelField("Name", GUILayout.Width(200));
             EditorGUILayout.LabelField("Total keys", GUILayout.Width(60));
             GUILayout.EndHorizontal();
 
             _databaseScroll = GUILayout.BeginScrollView(_databaseScroll, GUI.skin.box, GUILayout.Height(120));
-            GUILayout.BeginVertical(GUILayout.Height(10));
+            GUILayout.BeginVertical();
             
             MusicData toDelete = null;
             MusicData toLoad = null;
-            foreach (var data in _database.Data)
+            try
             {
-                GUILayout.BeginHorizontal();
+                foreach (var data in _database.Data)
+                {
+                    GUILayout.BeginHorizontal();
 
-                if (GUILayout.Button("X", GUILayout.Width(20)))
-                    toDelete = data;
-                if (GUILayout.Button("Import", GUILayout.Width(50)))
-                    toLoad = data;
+                    if (GUILayout.Button("X", GUILayout.Width(20)))
+                        toDelete = data;
+                    if (GUILayout.Button("Import", GUILayout.Width(50)))
+                        toLoad = data;
 
-                EditorGUILayout.SelectableLabel(data.MusicName, GUILayout.Width(200), GUILayout.Height(20));
-                EditorGUILayout.SelectableLabel(data.Markers.Count.ToString(), GUILayout.Width(60), GUILayout.Height(20));
-                GUILayout.EndHorizontal();
+                    EditorGUILayout.SelectableLabel(data.MusicName, GUILayout.Width(200), GUILayout.Height(20));
+                    EditorGUILayout.SelectableLabel(data.Markers.Count.ToString(), GUILayout.Width(60), GUILayout.Height(20));
+                    GUILayout.EndHorizontal();
+                }
             }
+            catch (ArgumentException e)
+            {
+                if (!e.Message.Contains("when doing mouseDown"))
+                    throw e;
+            }
+            
 
             if (toDelete != null)
             {
