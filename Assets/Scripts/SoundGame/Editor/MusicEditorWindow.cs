@@ -94,7 +94,7 @@ namespace Pingle.SoundGame.Editor
 
                 ComputePlaceBeats(_beatPlacerPeriod, _beatsPlacerResultBuffer);
                 _markers.AddRange(_beatsPlacerResultBuffer);
-                _database.ExportMarkers(_currentClip?.name, _markers);
+                _database.ExportMarkers(_currentClip.name, _markers);
                 Repaint();
             }
 
@@ -438,7 +438,7 @@ namespace Pingle.SoundGame.Editor
                 if (GUI.Button(rect, "", _resources.MarkerButtonStyle))
                 {
                     _markers.RemoveAt(i);
-                    _database.ExportMarkers(_currentClip?.name, _markers);
+                    _database.ExportMarkers(_currentClip.name, _markers);
                     Repaint();
                 }
             }
@@ -461,7 +461,7 @@ namespace Pingle.SoundGame.Editor
 
                 if (markersCount != _markers.Count)
                 {
-                    _database.ExportMarkers(_currentClip?.name, _markers);
+                    _database.ExportMarkers(_currentClip.name, _markers);
                     Repaint();
                 }
             }
@@ -486,7 +486,7 @@ namespace Pingle.SoundGame.Editor
                     _draggingMouseSample = MouseToSamplePos(mousePos);
                     _markers.Add(_draggingMouseSample);
                     _cursorPos = SampleToPreciseTime(_draggingMouseSample);
-                    _database.ExportMarkers(_currentClip?.name, _markers);
+                    _database.ExportMarkers(_currentClip.name, _markers);
                     Repaint();
                 }
                 
@@ -498,7 +498,7 @@ namespace Pingle.SoundGame.Editor
                 _draggingMouseSample = MouseToSamplePos(mousePos);
                 _cursorPos = SampleToPreciseTime(_draggingMouseSample);
                 _markers.Add(_draggingMouseSample);
-                _database.ExportMarkers(_currentClip?.name, _markers);
+                _database.ExportMarkers(_currentClip.name, _markers);
                 Repaint();
             }
         }
@@ -589,7 +589,9 @@ namespace Pingle.SoundGame.Editor
             _beats.Clear();
             _currentClipDuration = _currentClip == null ? "" : new TimeSpan(0, 0, (int)(_currentClip.length)).ToString(@"mm\:ss");
             _currentClipFrequencyKHZ = _currentClip == null ? "" : (_currentClip.frequency / 1000f).ToString() + " kHz";
-            _database.ImportMarkers(_currentClip?.name, _currentClip?.samples ?? 0, _markers);
+            _markers.Clear();
+            if (_currentClip != null)
+                _database.ImportMarkers(_currentClip.name, _currentClip.samples, _markers);
         }
 
         private void MusicDatabaseControl()
@@ -606,7 +608,8 @@ namespace Pingle.SoundGame.Editor
                 if (!string.IsNullOrEmpty(filePath))
                 {
                     _database.LoadDatabase(filePath);
-                    _database.ImportMarkers(_currentClip?.name, _currentClip?.samples ?? 0, _markers);
+                    if (_currentClip != null)
+                        _database.ImportMarkers(_currentClip.name, _currentClip.samples, _markers);
                 }
                 
             }
