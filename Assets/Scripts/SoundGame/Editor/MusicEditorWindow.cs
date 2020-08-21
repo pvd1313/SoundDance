@@ -15,6 +15,7 @@ namespace Pingle.SoundGame.Editor
         private static readonly float ZoomSpeed = 1.5f;
 
         private MusicEditorResources _resources = new MusicEditorResources();
+        private MusicEditorDatabase _database = new MusicEditorDatabase();
         private string _folderPath;
         private string[] _folderItems = new string[0];
         private Vector2 _audioScroll;
@@ -30,12 +31,9 @@ namespace Pingle.SoundGame.Editor
         private int _replaySample;
         private int _startSample;
         private bool _previewMouseDown;
-        private bool _databaseDirty;
-        private float _lastSaveTime;
         private int _draggingMouseSample;
         private List<int> _markers = new List<int>();
         private List<int> _beats = new List<int>();
-        private string _musicDatabasePath;
         private float _cursorPos;
         private int _analyzeBPM;
         private float _beatPlacerPeriod;
@@ -49,13 +47,13 @@ namespace Pingle.SoundGame.Editor
         [MenuItem("Tools/MusicEditor")]
         private static void OpenWindow()
         {
-            EditorWindow.GetWindow(typeof(MusicEditorWindow));
+            GetWindow(typeof(MusicEditorWindow));
         }
 
         private void OnGUI()
         {
-            EditorApplication.update -= AutosaveDatabase;
-            EditorApplication.update += AutosaveDatabase;
+            EditorApplication.update -= _database.Autosave;
+            EditorApplication.update += _database.Autosave;
 
             _resources.Initialize();
             FolderGUI();
@@ -96,8 +94,8 @@ namespace Pingle.SoundGame.Editor
 
                 ComputePlaceBeats(_beatPlacerPeriod, _beatsPlacerResultBuffer);
                 _markers.AddRange(_beatsPlacerResultBuffer);
+                _database.ExportMarkers(_currentClip?.name, _markers);
                 Repaint();
-                TryExportCurrentClipMarkers();
             }
 
             GUILayout.Label("Period", GUILayout.Width(40));
@@ -149,14 +147,6 @@ namespace Pingle.SoundGame.Editor
                 var right = _beatsPlacerWorkBuffer[i * indexDelta + 1];
                 var sample = (int)Mathf.Lerp(left, right, frac);
                 result.Add(sample);
-            }
-        }
-
-        private void AutosaveDatabase()
-        {
-            if (_databaseDirty && (int)_lastSaveTime < (int)EditorApplication.timeSinceStartup)
-            {
-                TryExportDatabase(_musicDatabasePath);
             }
         }
 
@@ -443,7 +433,7 @@ namespace Pingle.SoundGame.Editor
                 if (GUI.Button(rect, "", _resources.MarkerButtonStyle))
                 {
                     _markers.RemoveAt(i);
-                    TryExportCurrentClipMarkers();
+                    _database.ImportMarkers(_currentClip?.name, _currentClip?.samples ?? 0, _markers);
                 }
             }
 
@@ -465,7 +455,7 @@ namespace Pingle.SoundGame.Editor
 
                 if (markersCount != _markers.Count)
                 {
-                    TryExportCurrentClipMarkers();
+                    _database.ExportMarkers(_currentClip?.name, _markers);
                     Repaint();
                 }
             }
@@ -490,8 +480,8 @@ namespace Pingle.SoundGame.Editor
                     _draggingMouseSample = MouseToSamplePos(mousePos);
                     _markers.Add(_draggingMouseSample);
                     _cursorPos = SampleToPreciseTime(_draggingMouseSample);
+                    _database.ExportMarkers(_currentClip?.name, _markers);
                     Repaint();
-                    TryExportCurrentClipMarkers();
                 }
                 
             }
@@ -502,8 +492,8 @@ namespace Pingle.SoundGame.Editor
                 _draggingMouseSample = MouseToSamplePos(mousePos);
                 _cursorPos = SampleToPreciseTime(_draggingMouseSample);
                 _markers.Add(_draggingMouseSample);
+                _database.ExportMarkers(_currentClip?.name, _markers);
                 Repaint();
-                TryExportCurrentClipMarkers();
             }
         }
 
@@ -593,54 +583,7 @@ namespace Pingle.SoundGame.Editor
             _beats.Clear();
             _currentClipDuration = _currentClip == null ? "" : new TimeSpan(0, 0, (int)(_currentClip.length)).ToString(@"mm\:ss");
             _currentClipFrequencyKHZ = _currentClip == null ? "" : (_currentClip.frequency / 1000f).ToString() + " kHz";
-            TryImportCurrentClipMarkers();
-        }
-
-        private void TryImportCurrentClipMarkers()
-        {
-            try
-            {
-                _markers.Clear();
-
-                if (_currentClip == null) return;
-
-                var data = _resources.MusicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
-                if (data == null) return;
-
-                _markers.AddRange(data.Markers.Where(m => m > 0 && m <= _currentClip.samples));
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
-        }
-
-        private void TryExportCurrentClipMarkers()
-        {
-            if (_currentClip == null) return;
-
-            try
-            {
-                var data = _resources.MusicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
-                if (data == null)
-                {
-                    data = new MusicData();
-                    data.Markers = new List<int>(_markers);
-                    data.MusicName = _currentClip.name;
-                    _resources.MusicDatabase.Data.Add(data);
-                }
-                else
-                {
-                    data.Markers.Clear();
-                    data.Markers.AddRange(_markers);
-                }
-
-                _databaseDirty = true;
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
+            _database.ImportMarkers(_currentClip?.name, _currentClip?.samples ?? 0, _markers);
         }
 
         private void MusicDatabaseControl()
@@ -648,61 +591,27 @@ namespace Pingle.SoundGame.Editor
             GUILayout.BeginHorizontal();
             
             GUILayout.Label("Database", GUILayout.Width(60));
-            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_musicDatabasePath); EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(true); GUILayout.TextField(_database.Path); EditorGUI.EndDisabledGroup();
 
             if (GUILayout.Button("Open...", GUILayout.Width(60)))
             {
                 var filePath = EditorUtility.OpenFilePanel("Open database", "/", "json");
-                TryImportDatabase(filePath);
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    _database.LoadDatabase(filePath);
+                    _database.ImportMarkers(_currentClip?.name, _currentClip?.samples ?? 0, _markers);
+                }
+                
             }
 
             if (GUILayout.Button("Save...", GUILayout.Width(60)))
             {
                 var filePath = EditorUtility.SaveFilePanel("Save database", "/", "MusicDatabase", "json");
-                TryExportDatabase(filePath);
+                if (!string.IsNullOrEmpty(filePath))
+                    _database.SaveDatabase(filePath);
             }
 
             GUILayout.EndHorizontal();
-        }
-
-        private void TryImportDatabase(string path)
-        {
-            if (!File.Exists(path)) return;
-
-            try
-            {
-                var json = File.ReadAllText(path);
-                var database = JsonUtility.FromJson<MusicDatabase>(json);
-                if (database.Data == null) return;
-                _resources.MusicDatabase.Data.Clear();
-                _resources.MusicDatabase.Data.AddRange(database.Data.Where(d => d.Markers != null && !string.IsNullOrEmpty(d.MusicName)));
-                _musicDatabasePath = path;
-                TryImportCurrentClipMarkers();
-                Repaint();
-                _databaseDirty = false;
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
-        }
-
-        private void TryExportDatabase(string path)
-        {
-            if (string.IsNullOrEmpty(path)) return;
-
-            try
-            {
-                var json = JsonUtility.ToJson(_resources.MusicDatabase);
-                File.WriteAllText(path, json);
-                _musicDatabasePath = path;
-                _databaseDirty = false;
-                _lastSaveTime = (float)EditorApplication.timeSinceStartup;
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
         }
     }
 }

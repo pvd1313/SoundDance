@@ -16,7 +16,6 @@ namespace Pingle.SoundGame.Editor
         public GUIStyle FileButtonStyle => _fileButtonStyle;
         public GUIStyle MarkerButtonStyle => _markerButtonStyle;
         public AudioSource AudioSource => _audioSource;
-        public MusicDatabase MusicDatabase => _musicDatabase;
 
         private Texture2D _selectionSliderTexture;
         private Texture2D _selectionBackgroundTexture;
@@ -28,7 +27,6 @@ namespace Pingle.SoundGame.Editor
         private GUIStyle _fileButtonStyle;
         private GUIStyle _markerButtonStyle;
         private AudioSource _audioSource;
-        private MusicDatabase _musicDatabase;
 
         private bool _initialized;
 
@@ -52,12 +50,6 @@ namespace Pingle.SoundGame.Editor
             _fileButtonStyle.alignment = TextAnchor.MiddleRight;
 
             _markerButtonStyle = new GUIStyle();
-
-            if (_musicDatabase == null)
-            {
-                _musicDatabase = new MusicDatabase();
-                _musicDatabase.Data = new List<MusicData>();
-            }
 
             _beatPlacerPreviewTexture = CreatePixelColorTexture(0, 1, 1, 1f);
             _beatMarkerTexture = CreatePixelColorTexture(0.8f, 0.8f, 0.8f, 0.3f);
