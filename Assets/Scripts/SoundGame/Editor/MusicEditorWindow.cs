@@ -204,7 +204,8 @@ namespace Pingle.SoundGame.Editor
             _audioSource = gm?.GetComponent<AudioSource>();
             if (_audioSource == null)
             {
-                _audioSource = new GameObject("_MusicEditorAudioPlayer").AddComponent<AudioSource>();
+                gm = new GameObject("_MusicEditorAudioPlayer");
+                _audioSource = gm.AddComponent<AudioSource>();
             }
             _audioSource.playOnAwake = false;
             gm.hideFlags |= HideFlags.HideAndDontSave;
