@@ -14,6 +14,7 @@ namespace Pingle.SoundGame.Editor
         private static readonly float TimelineSectionWidth = 50;
         private static readonly float ZoomSpeed = 1.5f;
 
+        private MusicEditorResources _resources = new MusicEditorResources();
         private string _folderPath;
         private string[] _folderItems = new string[0];
         private Vector2 _audioScroll;
@@ -24,25 +25,14 @@ namespace Pingle.SoundGame.Editor
         private Rect _timelineRect;
         private Vector2Int _preview;
         private Vector2Int _selection;
-        private Texture2D _selectionSliderTexture;
-        private Texture2D _selectionBackgroundTexture;
-        private Texture2D _playingTexture;
-        private Texture2D _markerTexture;
-        private Texture2D _timelineTexture;
-        private Texture2D _beatMarkerTexture;
-        private Texture2D _beatPlacerPreviewTexture;
-        private AudioSource _audioSource;
         private Vector2 _previewMouseStartPos;
         private bool _loopAudio;
         private int _replaySample;
         private int _startSample;
-        private GUIStyle _fileButtonStyle;
-        private GUIStyle _markerButtonStyle;
         private bool _previewMouseDown;
         private bool _databaseDirty;
         private float _lastSaveTime;
         private int _draggingMouseSample;
-        private MusicDatabase _musicDatabase;
         private List<int> _markers = new List<int>();
         private List<int> _beats = new List<int>();
         private string _musicDatabasePath;
@@ -67,7 +57,7 @@ namespace Pingle.SoundGame.Editor
             EditorApplication.update -= AutosaveDatabase;
             EditorApplication.update += AutosaveDatabase;
 
-            InitializeResources();
+            _resources.Initialize();
             FolderGUI();
             AudioControl();
             AudioInfo();
@@ -170,85 +160,6 @@ namespace Pingle.SoundGame.Editor
             }
         }
 
-        private void InitializeResources()
-        {
-            if (_selectionSliderTexture == null)
-            {
-                _selectionSliderTexture = new Texture2D(1, 1);
-                _selectionSliderTexture.SetPixel(0, 0, Color.red);
-                _selectionSliderTexture.Apply();
-            }
-
-            if (_playingTexture == null)
-            {
-                _playingTexture = new Texture2D(1, 1);
-                _playingTexture.SetPixel(0, 0, Color.green);
-                _playingTexture.Apply();
-            }
-
-            if (_selectionBackgroundTexture == null)
-            {
-                _selectionBackgroundTexture = new Texture2D(1, 1);
-                _selectionBackgroundTexture.SetPixel(0, 0, new Color(0.7f, 0.3f, 0.3f, 0.5f));
-                _selectionBackgroundTexture.Apply();
-            }
-
-            if (_markerTexture == null)
-            {
-                _markerTexture = new Texture2D(1, 1);
-                _markerTexture.SetPixel(0, 0, Color.yellow);
-                _markerTexture.Apply();
-            }
-
-            var gm = GameObject.Find("_MusicEditorAudioPlayer");
-            _audioSource = gm?.GetComponent<AudioSource>();
-            if (_audioSource == null)
-            {
-                gm = new GameObject("_MusicEditorAudioPlayer");
-                _audioSource = gm.AddComponent<AudioSource>();
-            }
-            _audioSource.playOnAwake = false;
-            gm.hideFlags |= HideFlags.HideAndDontSave;
-
-            if (_fileButtonStyle == null)
-            {
-                _fileButtonStyle = new GUIStyle(GUI.skin.GetStyle("Button"));
-                _fileButtonStyle.alignment = TextAnchor.MiddleRight;
-            }
-
-            if (_markerButtonStyle == null)
-            {
-                _markerButtonStyle = new GUIStyle();
-            }
-
-            if (_musicDatabase == null)
-            {
-                _musicDatabase = new MusicDatabase();
-                _musicDatabase.Data = new List<MusicData>();
-            }
-
-            if (_timelineTexture == null)
-            {
-                _timelineTexture = new Texture2D(1, 1);
-                _timelineTexture.SetPixel(0, 0, Color.gray);
-                _timelineTexture.Apply();
-            }
-
-            if (_beatMarkerTexture == null)
-            {
-                _beatMarkerTexture = new Texture2D(1, 1);
-                _beatMarkerTexture.SetPixel(0, 0, new Color(0.8f, 0.8f, 0.8f, 0.3f));
-                _beatMarkerTexture.Apply();
-            }
-
-            if (_beatPlacerPreviewTexture == null)
-            {
-                _beatPlacerPreviewTexture = new Texture2D(1, 1);
-                _beatPlacerPreviewTexture.SetPixel(0, 0, new Color(0, 1, 1, 1f));
-                _beatPlacerPreviewTexture.Apply();
-            }
-        }
-
         private void FolderGUI()
         {
             EditorGUILayout.BeginHorizontal();
@@ -269,7 +180,7 @@ namespace Pingle.SoundGame.Editor
 
             foreach (var item in _folderItems)
             {
-                if (GUILayout.Button(item, _fileButtonStyle))
+                if (GUILayout.Button(item, _resources.FileButtonStyle))
                 {
                     var newAudio = AssetDatabase.LoadAssetAtPath(item, typeof(AudioClip)) as AudioClip;
                     if (newAudio != null)
@@ -295,7 +206,7 @@ namespace Pingle.SoundGame.Editor
                 OnClipChanged();
 
             _loopAudio = EditorGUILayout.ToggleLeft("Loop", _loopAudio, GUILayout.Width(50));
-            _audioSource.loop = _loopAudio;
+            _resources.AudioSource.loop = _loopAudio;
 
             EditorGUI.BeginDisabledGroup(_currentClip == null);
             if (GUILayout.Button("Play", GUILayout.Width(60)))
@@ -305,15 +216,15 @@ namespace Pingle.SoundGame.Editor
                 else
                     _replaySample = int.MaxValue;
                 _startSample = Mathf.Min(_selection.x, _selection.y);
-                _audioSource.Play();
-                _audioSource.timeSamples = _startSample;
+                _resources.AudioSource.Play();
+                _resources.AudioSource.timeSamples = _startSample;
             }
                 
             EditorGUI.EndDisabledGroup();
 
-            EditorGUI.BeginDisabledGroup(_currentClip == null || !_audioSource.isPlaying);
+            EditorGUI.BeginDisabledGroup(_currentClip == null || !_resources.AudioSource.isPlaying);
             if (GUILayout.Button("Stop", GUILayout.Width(60)))
-                _audioSource.Stop();
+                _resources.AudioSource.Stop();
             EditorGUI.EndDisabledGroup();
 
             EditorGUILayout.EndHorizontal();
@@ -368,14 +279,14 @@ namespace Pingle.SoundGame.Editor
                 var x = SampleToPreviewXLocal(sample);
                 
                 var lineRect = new Rect(_timelineRect.x + x, _timelineRect.y, 1, _timelineRect.height);
-                GUI.DrawTexture(lineRect, _timelineTexture);
+                GUI.DrawTexture(lineRect, _resources.TimelineTexture);
 
                 var textRect = new Rect(_timelineRect.x + x, _timelineRect.y + 3, TimelineSectionWidth, _timelineRect.height);
                 var timeText = ((int)((firstSection + i) * resultSize)).ToString();
                 GUI.Label(textRect, timeText);
             }
 
-            GUI.DrawTexture(new Rect(_timelineRect.x, _timelineRect.y, _timelineRect.width, 1), _timelineTexture);
+            GUI.DrawTexture(new Rect(_timelineRect.x, _timelineRect.y, _timelineRect.width, 1), _resources.TimelineTexture);
         }
 
         private void AudioPreview()
@@ -405,32 +316,32 @@ namespace Pingle.SoundGame.Editor
                 var startX = SampleToPreviewXLocal(_selection.x);
                 var endX = SampleToPreviewXLocal(_selection.y);
                 var rect = new Rect(_previewRect.x + startX, _previewRect.y, endX - startX, _previewRect.height);
-                GUI.DrawTexture(rect, _selectionBackgroundTexture);
+                GUI.DrawTexture(rect, _resources.SelectionBackgroundTexture);
             }
 
             GUI.DrawTexture(_previewRect, _previewTexture);
 
             var sliderRect = SampleToPreviewSliderRect(_selection.x);
-            GUI.DrawTexture(sliderRect, _selectionSliderTexture);
+            GUI.DrawTexture(sliderRect, _resources.SelectionSliderTexture);
 
             sliderRect = SampleToPreviewSliderRect(_selection.y);
-            GUI.DrawTexture(sliderRect, _selectionSliderTexture);
+            GUI.DrawTexture(sliderRect, _resources.SelectionSliderTexture);
 
-            if (_currentClip != null && _audioSource.isPlaying)
+            if (_currentClip != null && _resources.AudioSource.isPlaying)
             {
-                sliderRect = SampleToPreviewSliderRect(_audioSource.timeSamples);
-                GUI.DrawTexture(sliderRect, _playingTexture);
+                sliderRect = SampleToPreviewSliderRect(_resources.AudioSource.timeSamples);
+                GUI.DrawTexture(sliderRect, _resources.PlayingTexture);
                 Repaint();
 
-                if (_audioSource.timeSamples >= _replaySample)
+                if (_resources.AudioSource.timeSamples >= _replaySample)
                 {
                     if (_loopAudio)
                     {
-                        _audioSource.timeSamples = _startSample;
+                        _resources.AudioSource.timeSamples = _startSample;
                     }
                     else
                     {
-                        _audioSource.Stop();
+                        _resources.AudioSource.Stop();
                     }
                 }
             }
@@ -502,7 +413,7 @@ namespace Pingle.SoundGame.Editor
                     {
                         var x = SampleToPreviewXLocal(beat);
                         var rect = new Rect(_previewRect.x + x, _previewRect.y, 1, _previewRect.height);
-                        GUI.DrawTexture(rect, _beatPlacerPreviewTexture);
+                        GUI.DrawTexture(rect, _resources.BeatPlacerPreviewTexture);
                     }
             }
 
@@ -515,7 +426,7 @@ namespace Pingle.SoundGame.Editor
 
                     var x = SampleToPreviewXLocal(beat);
                     var rect = new Rect(_previewRect.x + x, _previewRect.y, 1, _previewRect.height);
-                    GUI.DrawTexture(rect, _beatMarkerTexture);
+                    GUI.DrawTexture(rect, _resources.BeatMarkerTexture);
                 }
             }
 
@@ -525,11 +436,11 @@ namespace Pingle.SoundGame.Editor
                 if (markerPos < _preview.x || markerPos > _preview.y) continue;
 
                 var rect = SampleToPreviewSliderRect(markerPos);
-                GUI.DrawTexture(rect, _markerTexture);
+                GUI.DrawTexture(rect, _resources.MarkerTexture);
 
                 rect = SampleToPreviewMarkerRect(markerPos, 10);
-                GUI.DrawTexture(rect, _markerTexture);
-                if (GUI.Button(rect, "", _markerButtonStyle))
+                GUI.DrawTexture(rect, _resources.MarkerTexture);
+                if (GUI.Button(rect, "", _resources.MarkerButtonStyle))
                 {
                     _markers.RemoveAt(i);
                     TryExportCurrentClipMarkers();
@@ -671,8 +582,8 @@ namespace Pingle.SoundGame.Editor
 
         private void OnClipChanged()
         {
-            _audioSource.Stop();
-            _audioSource.clip = _currentClip;
+            _resources.AudioSource.Stop();
+            _resources.AudioSource.clip = _currentClip;
             _previewOutdated = true;
             _preview.x = 0;
             _preview.y = _currentClip != null ? _currentClip.samples : 0;
@@ -693,7 +604,7 @@ namespace Pingle.SoundGame.Editor
 
                 if (_currentClip == null) return;
 
-                var data = _musicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
+                var data = _resources.MusicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
                 if (data == null) return;
 
                 _markers.AddRange(data.Markers.Where(m => m > 0 && m <= _currentClip.samples));
@@ -710,13 +621,13 @@ namespace Pingle.SoundGame.Editor
 
             try
             {
-                var data = _musicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
+                var data = _resources.MusicDatabase.Data.FirstOrDefault(d => d.MusicName == _currentClip.name);
                 if (data == null)
                 {
                     data = new MusicData();
                     data.Markers = new List<int>(_markers);
                     data.MusicName = _currentClip.name;
-                    _musicDatabase.Data.Add(data);
+                    _resources.MusicDatabase.Data.Add(data);
                 }
                 else
                 {
@@ -763,8 +674,8 @@ namespace Pingle.SoundGame.Editor
                 var json = File.ReadAllText(path);
                 var database = JsonUtility.FromJson<MusicDatabase>(json);
                 if (database.Data == null) return;
-                _musicDatabase.Data.Clear();
-                _musicDatabase.Data.AddRange(database.Data.Where(d => d.Markers != null && !string.IsNullOrEmpty(d.MusicName)));
+                _resources.MusicDatabase.Data.Clear();
+                _resources.MusicDatabase.Data.AddRange(database.Data.Where(d => d.Markers != null && !string.IsNullOrEmpty(d.MusicName)));
                 _musicDatabasePath = path;
                 TryImportCurrentClipMarkers();
                 Repaint();
@@ -782,7 +693,7 @@ namespace Pingle.SoundGame.Editor
 
             try
             {
-                var json = JsonUtility.ToJson(_musicDatabase);
+                var json = JsonUtility.ToJson(_resources.MusicDatabase);
                 File.WriteAllText(path, json);
                 _musicDatabasePath = path;
                 _databaseDirty = false;
