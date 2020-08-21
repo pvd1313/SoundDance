@@ -433,7 +433,8 @@ namespace Pingle.SoundGame.Editor
                 if (GUI.Button(rect, "", _resources.MarkerButtonStyle))
                 {
                     _markers.RemoveAt(i);
-                    _database.ImportMarkers(_currentClip?.name, _currentClip?.samples ?? 0, _markers);
+                    _database.ExportMarkers(_currentClip?.name, _markers);
+                    Repaint();
                 }
             }
 
