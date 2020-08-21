@@ -13,6 +13,8 @@ Click & Hold RMB to add/drag keys, press square to remove key. Press Delete to r
 
 Click "Database" -> "Open" & "Save" to manage keys database. Make sure to load database if it exists before performing any work.
 
+Under "Database" shown list of stored keys for each song. Click "Import" to import stored keys into current clip, click "X" to delete recorded data.
+
 Scroll MMB to zoom. Press CTRL+Z to zoom into selected sector.
 
 Click "Analyze music" to determine & display music beats.
